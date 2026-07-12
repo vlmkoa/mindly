@@ -1,0 +1,25 @@
+{
+  "name": "koan-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "backend": "docker compose up -d --build",
+    "backend:logs": "docker compose logs -f api",
+    "backend:down": "docker compose down",
+    "eval": "python -X utf8 evals/run.py"
+  },
+  "dependencies": {
+    "next": "^16.2.4",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,6 @@
+{"timestamp":"00:00:05.187","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:08.228","source":"Server","level":"LOG","message":"○ Compiling / ..."}
+{"timestamp":"00:00:14.297","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"01:24:04.676","source":"Server","level":"LOG","message":"○ Compiling /planner ..."}
+{"timestamp":"01:28:35.112","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}
+{"timestamp":"01:29:45.964","source":"Browser","level":"INFO","message":"%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"}

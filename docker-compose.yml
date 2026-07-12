@@ -1,0 +1,45 @@
+# Runs the data layer: Postgres + FastAPI backend.
+# The Next.js frontend runs on the host (npm run dev) and proxies /api/* here.
+#
+#   docker compose up -d --build      # start / rebuild
+#   docker compose logs -f api        # tail backend logs
+#   docker compose down               # stop (data persists in the volume)
+#   docker compose down -v            # stop AND wipe the database
+#
+# ANTHROPIC_API_KEY is read from .env.local via `env_file` (gitignored).
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: koan
+      POSTGRES_PASSWORD: koan
+      POSTGRES_DB: koan
+    ports:
+      # Exposed on the host for psql / GUI tools; remove if you don't want that.
+      - "5432:5432"
+    volumes:
+      - koan_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U koan -d koan"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .                    # repo root, so Dockerfile can copy lib/
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://koan:koan@db:5432/koan
+      FRONTEND_ORIGIN: http://localhost:3000
+    env_file:
+      - .env.local                  # supplies ANTHROPIC_API_KEY
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  koan_pgdata:

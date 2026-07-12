@@ -1,0 +1,9 @@
+# Unpinned on purpose at this stage — Docker builds install the latest
+# compatible set. Freeze (pip freeze) once the app stabilizes.
+fastapi
+uvicorn[standard]
+sqlalchemy>=2.0
+psycopg[binary]
+bcrypt
+anthropic
+pydantic[email]>=2

@@ -1,0 +1,12 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/_global-error/page": "/_global-error",
+  "/journal/page": "/journal",
+  "/koan/page": "/koan",
+  "/login/page": "/login",
+  "/meditate/page": "/meditate",
+  "/page": "/",
+  "/signup/page": "/signup",
+  "/sobriety/page": "/sobriety",
+  "/planner/page": "/planner"
+}

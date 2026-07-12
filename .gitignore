@@ -1,0 +1,20 @@
+node_modules
+# Keep environment variables out of version control
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Local databases (data now lives in the Docker volume)
+*.db
+*.db-journal
+
+# Machine-specific TLS roots (see backend/certs/README.md)
+backend/certs/*.crt
+
+.next/
+*.pdf
+.claude/

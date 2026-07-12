@@ -1,0 +1,12 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/_global-error/page": "app/_global-error/page.js",
+  "/journal/page": "app/journal/page.js",
+  "/koan/page": "app/koan/page.js",
+  "/login/page": "app/login/page.js",
+  "/meditate/page": "app/meditate/page.js",
+  "/page": "app/page.js",
+  "/signup/page": "app/signup/page.js",
+  "/sobriety/page": "app/sobriety/page.js",
+  "/planner/page": "app/planner/page.js"
+}
