@@ -1,8 +1,6 @@
-# ________ — stillness, reflection, dissolution
+# Mindly — stillness, reflection, dissolution
 
 > A meditation, sobriety, journal, and planner app — with a koan mirror that dissolves certainty.
-
-App name is a placeholder (`________`) until one is chosen. The original koan chat lives at `/koan`.
 
 **Deep dive:** see [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full stack, npm script graph, file-by-file reference, call chains, OSI-layered route walkthroughs, and run instructions.
 
