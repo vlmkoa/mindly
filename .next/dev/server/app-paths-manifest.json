@@ -1,9 +1,0 @@
-{
-  "/page": "app/page.js",
-  "/sobriety/page": "app/sobriety/page.js",
-  "/journal/page": "app/journal/page.js",
-  "/koan/page": "app/koan/page.js",
-  "/login/page": "app/login/page.js",
-  "/planner/page": "app/planner/page.js",
-  "/meditate/page": "app/meditate/page.js"
-}
