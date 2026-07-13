@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, Dashboard } from "@/lib/api";
 import { Planner } from "@/components/Planner";
 import { ProgressWidgets } from "@/components/ProgressWidgets";
+import { PixelScene } from "@/components/PixelScene";
 
 export default function HomePage() {
   const [data, setData] = useState<Dashboard | null>(null);
@@ -31,6 +32,8 @@ export default function HomePage() {
       <header>
         <div className="title">________</div>
         <div className="subtitle">Stillness. Honesty. Dissolution.</div>
+        {/* Only renders in scene themes; returns null otherwise. */}
+        <PixelScene />
         <p className="section-lede home-lede">
           A place to sit, track what you put down, write what the day held, plan
           what remains — and, when certainty hardens, speak to the mirror.
@@ -40,7 +43,7 @@ export default function HomePage() {
       <div className="page-body">
         {error && <div className="form-error">{error}</div>}
         {data && (
-          <>
+          <div className="home-grid">
             <Planner
               todayTasks={data.todayTasks}
               yesterdayTasks={data.yesterdayTasks}
@@ -59,7 +62,7 @@ export default function HomePage() {
               journal={{ todayDone: data.journalTodayDone, streak: data.journalStreak }}
               koan={{ sessionsThisWeek: data.koanSessionsThisWeek }}
             />
-          </>
+          </div>
         )}
       </div>
     </>

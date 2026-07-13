@@ -11,14 +11,21 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { api, User } from "@/lib/api";
 
 const PUBLIC_PATHS = ["/login", "/signup"];
+// Koan and journal read better in a narrower column; everything else is wide.
+const READING_PATHS = ["/koan", "/journal"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isPublic = PUBLIC_PATHS.includes(pathname);
+  const isReading = READING_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
+  const layoutWidth = isReading ? "layout-reading" : "layout-wide";
 
   // undefined = still checking, null = not logged in, User = logged in
   const [user, setUser] = useState<User | null | undefined>(undefined);
@@ -42,9 +49,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname, isPublic, router]);
 
   return (
-    <>
+    <ThemeProvider>
       <div className="grain" />
-      <div className="layout layout-wide">
+      <div className={`layout ${isPublic ? "layout-narrow" : layoutWidth}`}>
         {isPublic ? (
           children
         ) : user ? (
@@ -59,6 +66,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </div>
-    </>
+    </ThemeProvider>
   );
 }

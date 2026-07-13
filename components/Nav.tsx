@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { ThemePicker } from "@/components/ThemePicker";
 
 const LINKS = [
   { href: "/", label: "Home" },
@@ -47,6 +48,7 @@ export function Nav({ userName }: { userName?: string | null }) {
           );
         })}
       </ul>
+      <ThemePicker />
       <button type="button" className="nav-signout" onClick={handleSignOut}>
         Sign out
       </button>
