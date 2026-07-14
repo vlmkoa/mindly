@@ -10,7 +10,7 @@ Mirrors the former Prisma schema (see ARCHITECTURE.md §7). Conventions:
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -127,3 +127,21 @@ class KoanSession(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     message_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class RateCounter(Base):
+    """Fixed-window rate-limit counters (see backend/ratelimit.py).
+
+    One row per (key, window_start); `count` is incremented atomically per hit
+    via a Postgres UPSERT. Stored in the DB (not process memory) so limits
+    survive restarts and hold across multiple backend instances. Stale rows are
+    pruned opportunistically by ratelimit._maybe_prune.
+    """
+
+    __tablename__ = "rate_counters"
+    __table_args__ = (UniqueConstraint("key", "window_start", name="uq_rate_key_window"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    key: Mapped[str] = mapped_column(String(128), index=True)  # e.g. "chat:day:<user_id>"
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)
