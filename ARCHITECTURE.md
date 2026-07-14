@@ -173,7 +173,7 @@ All pages are client components (`"use client"`) except thin wrappers; the auth 
 | `app/sobriety/page.tsx` | `SobrietyPage` | `api.sobriety.list()` → cards + add form |
 | `app/journal/page.tsx` | `computeStreak`, `JournalPage` | `api.journal.list()`; splits today vs history; client-side streak |
 | `app/koan/page.tsx` | `KoanPage` | Thin wrapper |
-| `app/koan/KoanChat.tsx` | `KoanChat` | Streams `POST /api/chat`; `api.koan.bump()` per message |
+| `app/koan/KoanChat.tsx` | `KoanChat` | Streams `POST /api/chat` (renders a 429 rate-limit in-voice); `api.koan.bump()` per message |
 
 ### 4.2 Components (`components/`)
 
@@ -206,18 +206,19 @@ All pages are client components (`"use client"`) except thin wrappers; the auth 
 | File | Key functions | Responsibility |
 |---|---|---|
 | `main.py` | `lifespan`, `health` | App factory; `create_all` on boot; CORS safety net; router registration |
-| `config.py` | constants | `DATABASE_URL`, `ANTHROPIC_API_KEY`, cookie params — all env-driven |
+| `config.py` | constants | `DATABASE_URL`, `ANTHROPIC_API_KEY`, cookie params, rate-limit caps — all env-driven |
 | `database.py` | `get_db` | Engine (`pool_pre_ping`) + per-request session dependency |
-| `models.py` | `User`, `AuthSession`, `MeditationSession`, `Addiction`, `RelapseEvent`, `JournalEntry`, `PlannerTask`, `KoanSession` | ORM tables; UUID-hex PKs; UTC timestamps; local-date strings |
+| `models.py` | `User`, `AuthSession`, `MeditationSession`, `Addiction`, `RelapseEvent`, `JournalEntry`, `PlannerTask`, `KoanSession`, `RateCounter` | ORM tables; UUID-hex PKs; UTC timestamps; local-date strings |
 | `schemas.py` | `CamelModel` + per-feature In/Out models | Pydantic validation; camelCase aliases so the React props stay unchanged |
 | `security.py` | `hash_password`, `verify_password`, `create_session`, `destroy_session`, `current_user` | bcrypt hashing; opaque token in HttpOnly `koan_session` cookie; `current_user` dependency 401s |
 | `prompt.py` | `load_system_prompt`, `load_few_shot_exemplars` | Parses the TS prompt file; guards against the historical empty-prompt bug |
-| `routers/auth.py` | `signup`, `login`, `logout`, `me` | Session issue/destroy; identical error for bad email vs bad password |
+| `ratelimit.py` | `chat_rate_limited_user`, `enforce_ip_limit`, `_hit` | Postgres-backed fixed-window rate limiting; per-user chat caps + per-IP login/signup caps; atomic UPSERT increment on `rate_counters` |
+| `routers/auth.py` | `signup`, `login`, `logout`, `me` | Session issue/destroy; identical error for bad email vs bad password; login/signup rate-limited per IP |
 | `routers/planner.py` | `list_tasks`, `create_task`, `toggle_task`, `delete_task` | Ownership-checked CRUD |
 | `routers/sobriety.py` | `list_addictions`, `start_tracking`, `record_relapse`, `stop_tracking` | Relapse archives the ended streak (`previous_start`) then resets the clock |
 | `routers/journal.py` | `list_entries`, `upsert_entry` | One entry per user+date; whole-entry overwrite |
 | `routers/meditation.py` | `save_session` | Logs completed sessions (audio never leaves the browser) |
-| `routers/koan.py` | `chat`, `bump_session` | Claude streaming with cached few-shot prefix; usage widget counter |
+| `routers/koan.py` | `chat`, `bump_session` | Claude streaming with cached few-shot prefix; chat rate-limited per user (10/min, 100/day) and logs token usage; usage widget counter |
 | `routers/dashboard.py` | `dashboard` | One-call aggregation; browser sends local `today` + tz offset so streaks/day-bars follow the user's calendar |
 
 ### 4.5 Infrastructure
@@ -281,6 +282,7 @@ KoanChat.send()
     → api.koan.bump()                     # fire-and-forget widget counter
     → fetch POST /api/chat {messages}
         → [Next rewrite] → FastAPI chat()
+            → chat_rate_limited_user: per-user 10/min + 100/day → 429 if over
             → validates roles/lengths (≤50 msgs, ≤8000 chars)
             → anthropic client.messages.stream(
                   system=SYSTEM_PROMPT,            # parsed from lib/system-prompt.ts
@@ -338,8 +340,8 @@ HTTP routes live at **Layer 7**, but each request traverses the whole stack. Bel
 
 | Method + path | Handler | Auth | Purpose |
 |---|---|---|---|
-| `POST /api/auth/signup` | `auth.signup` | issues cookie | Create account |
-| `POST /api/auth/login` | `auth.login` | issues cookie | Sign in |
+| `POST /api/auth/signup` | `auth.signup` | issues cookie · 5/min per IP | Create account |
+| `POST /api/auth/login` | `auth.login` | issues cookie · 10/min per IP | Sign in |
 | `POST /api/auth/logout` | `auth.logout` | cookie | Destroy session |
 | `GET /api/auth/me` | `auth.me` | cookie | Who am I (guard) |
 | `GET /api/dashboard?today=&tz_offset_min=` | `dashboard.dashboard` | cookie | Home aggregation |
@@ -347,7 +349,7 @@ HTTP routes live at **Layer 7**, but each request traverses the whole stack. Bel
 | `GET/POST /api/sobriety/addictions`, `POST .../{id}/relapse`, `POST .../{id}/stop` | `sobriety.*` | cookie | Sobriety |
 | `GET /api/journal/entries`, `PUT /api/journal/entries` | `journal.*` | cookie | Journal |
 | `POST /api/meditation/sessions` | `meditation.save_session` | cookie | Log session |
-| `POST /api/chat` | `koan.chat` | cookie | **Streaming** koan reply |
+| `POST /api/chat` | `koan.chat` | cookie · 10/min, 100/day per user | **Streaming** koan reply |
 | `POST /api/koan/bump` | `koan.bump_session` | cookie | Usage counter |
 | `GET /api/health` | `main.health` | public | Liveness probe |
 
@@ -417,6 +419,7 @@ users ─┬─ auth_sessions          (cookie token → user)
 | `journal_entries` | date "YYYY-MM-DD", mode, 4 text fields | one per user per local day |
 | `planner_tasks` | date, title, done | home planner |
 | `koan_sessions` | started_at, message_count | one per rolling hour |
+| `rate_counters` | key, window_start, count | fixed-window rate-limit counters; unique(key, window_start); not user-scoped (keys are `chat:*:<user_id>` or `login:*:<ip>`) |
 
 Tables are created by `Base.metadata.create_all` at API startup. When the schema starts evolving with real data, introduce Alembic migrations.
 
