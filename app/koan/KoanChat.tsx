@@ -49,6 +49,22 @@ export default function KoanChat() {
         body: JSON.stringify({ messages: newMessages }),
       });
 
+      if (res.status === 429) {
+        // Rate limited: show the server's message instead of streaming.
+        const detail = await res
+          .json()
+          .then((d) => d?.detail as string | undefined)
+          .catch(() => undefined);
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: detail || "Enough for now. Come back in a while.",
+          };
+          return updated;
+        });
+        return;
+      }
       if (!res.ok) {
         throw new Error(await res.text().catch(() => "request failed"));
       }

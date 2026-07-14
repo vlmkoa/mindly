@@ -20,6 +20,7 @@ import config
 from database import get_db
 from models import KoanSession, User, utcnow
 from prompt import FEW_SHOT_EXEMPLARS, SYSTEM_PROMPT
+from ratelimit import chat_rate_limited_user
 from schemas import ChatIn
 from security import current_user
 
@@ -49,7 +50,7 @@ def _cached_exemplars() -> list[dict]:
 
 
 @router.post("/chat")
-def chat(body: ChatIn, user: User = Depends(current_user)):
+def chat(body: ChatIn, user: User = Depends(chat_rate_limited_user)):
     if not config.ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not set")
 
@@ -71,6 +72,16 @@ def chat(body: ChatIn, user: User = Depends(current_user)):
         ) as stream:
             for text in stream.text_stream:
                 yield text
+            # Log real token usage so we can replace the LAUNCH_PLAN cost
+            # estimates with actual numbers (visible in `docker compose logs api`).
+            u = stream.get_final_message().usage
+            print(
+                f"[koan usage] user={user.id} in={u.input_tokens} "
+                f"cache_read={getattr(u, 'cache_read_input_tokens', 0)} "
+                f"cache_write={getattr(u, 'cache_creation_input_tokens', 0)} "
+                f"out={u.output_tokens}",
+                flush=True,
+            )
 
     return StreamingResponse(generate(), media_type="text/plain; charset=utf-8")
 

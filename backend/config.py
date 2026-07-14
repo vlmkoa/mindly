@@ -27,3 +27,11 @@ SESSION_TTL_DAYS = int(os.environ.get("SESSION_TTL_DAYS", "30"))
 
 # Set to "1" when serving over HTTPS so the cookie gets the Secure flag.
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "0") == "1"
+
+# ─── Rate limits (see backend/ratelimit.py, LAUNCH_PLAN.md item 1) ────────────
+# The chat endpoint spends the owner's Anthropic key, so it is capped per user.
+# Pair these with a monthly spend cap in the Anthropic Console as the backstop.
+CHAT_RATE_PER_MIN = int(os.environ.get("CHAT_RATE_PER_MIN", "10"))   # burst
+CHAT_RATE_PER_DAY = int(os.environ.get("CHAT_RATE_PER_DAY", "100"))  # per-user/day
+LOGIN_RATE_PER_MIN = int(os.environ.get("LOGIN_RATE_PER_MIN", "10"))  # per IP
+SIGNUP_RATE_PER_MIN = int(os.environ.get("SIGNUP_RATE_PER_MIN", "5"))  # per IP
