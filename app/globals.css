@@ -835,6 +835,48 @@ button:disabled {
   margin-top: 4px;
 }
 
+/* Label + typeable value on one row (frequency fields). */
+.field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.field-row-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+}
+
+.freq-number {
+  width: 64px;
+  height: 26px;
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  text-align: center;
+  outline: none;
+}
+
+.freq-number:focus {
+  border-color: var(--accent);
+}
+
+.freq-number::-webkit-outer-spin-button,
+.freq-number::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.freq-number[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 input[type="range"] {
   width: 100%;
   accent-color: var(--accent);

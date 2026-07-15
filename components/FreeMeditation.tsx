@@ -65,6 +65,73 @@ const BINAURAL_RECS = [
   { delta: 40, label: "Gamma 40 Hz", desc: "experimental" },
 ];
 
+// Carrier-frequency range for the mono/binaural tones (Hz). The number boxes
+// and the sliders share these bounds.
+const FREQ_MIN = 40;
+const FREQ_MAX = 1000;
+
+/**
+ * A number input for a carrier frequency, paired with a slider. Keeps its own
+ * draft string so the field can be cleared and retyped without fighting the
+ * controlled value; commits (clamped to [min,max]) on blur/Enter, and applies
+ * live only while the typed value is already in range — so a half-typed "4" on
+ * the way to "432" doesn't blip the tone down to 4 Hz.
+ */
+function FreqNumberBox({
+  value,
+  min,
+  max,
+  onCommit,
+  ariaLabel,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  onCommit: (hz: number) => void;
+  ariaLabel: string;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+
+  // Follow external changes (slider drags, preset buttons) while not editing.
+  useEffect(() => {
+    if (!focused) setDraft(String(value));
+  }, [value, focused]);
+
+  function commit() {
+    const n = Math.round(Number(draft));
+    const next = Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : value;
+    setDraft(String(next));
+    onCommit(next);
+  }
+
+  return (
+    <input
+      className="freq-number"
+      type="number"
+      inputMode="numeric"
+      min={min}
+      max={max}
+      value={draft}
+      aria-label={ariaLabel}
+      onFocus={() => setFocused(true)}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setDraft(raw);
+        const n = Number(raw);
+        if (Number.isFinite(n) && n >= min && n <= max) onCommit(Math.round(n));
+      }}
+      onBlur={() => {
+        setFocused(false);
+        commit();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+      }}
+    />
+  );
+}
+
 export function FreeMeditation() {
   const [durationSec, setDurationSec] = useState(10 * 60);
   const [editingDuration, setEditingDuration] = useState(false);
@@ -541,11 +608,23 @@ export function FreeMeditation() {
 
                     {config.frequencies.mode === "mono" ? (
                       <label className="field-label">
-                        Frequency — {config.frequencies.monoHz} Hz
+                        <span className="field-row">
+                          <span>Frequency</span>
+                          <span className="field-row-input">
+                            <FreqNumberBox
+                              value={config.frequencies.monoHz}
+                              min={FREQ_MIN}
+                              max={FREQ_MAX}
+                              onCommit={(hz) => setFrequencies({ monoHz: hz })}
+                              ariaLabel="Mono frequency in hertz"
+                            />
+                            Hz
+                          </span>
+                        </span>
                         <input
                           type="range"
-                          min={40}
-                          max={1000}
+                          min={FREQ_MIN}
+                          max={FREQ_MAX}
                           step={1}
                           value={config.frequencies.monoHz}
                           onChange={(e) =>
@@ -577,11 +656,23 @@ export function FreeMeditation() {
                           effects are subtle, headphones required
                         </div>
                         <label className="field-label">
-                          Left ear — {config.frequencies.leftHz} Hz
+                          <span className="field-row">
+                            <span>Left ear</span>
+                            <span className="field-row-input">
+                              <FreqNumberBox
+                                value={config.frequencies.leftHz}
+                                min={FREQ_MIN}
+                                max={FREQ_MAX}
+                                onCommit={(hz) => setFrequencies({ leftHz: hz })}
+                                ariaLabel="Left ear frequency in hertz"
+                              />
+                              Hz
+                            </span>
+                          </span>
                           <input
                             type="range"
-                            min={40}
-                            max={1000}
+                            min={FREQ_MIN}
+                            max={FREQ_MAX}
                             step={1}
                             value={config.frequencies.leftHz}
                             onChange={(e) =>
@@ -590,11 +681,23 @@ export function FreeMeditation() {
                           />
                         </label>
                         <label className="field-label">
-                          Right ear — {config.frequencies.rightHz} Hz
+                          <span className="field-row">
+                            <span>Right ear</span>
+                            <span className="field-row-input">
+                              <FreqNumberBox
+                                value={config.frequencies.rightHz}
+                                min={FREQ_MIN}
+                                max={FREQ_MAX}
+                                onCommit={(hz) => setFrequencies({ rightHz: hz })}
+                                ariaLabel="Right ear frequency in hertz"
+                              />
+                              Hz
+                            </span>
+                          </span>
                           <input
                             type="range"
-                            min={40}
-                            max={1000}
+                            min={FREQ_MIN}
+                            max={FREQ_MAX}
                             step={1}
                             value={config.frequencies.rightHz}
                             onChange={(e) =>

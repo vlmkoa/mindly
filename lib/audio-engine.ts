@@ -65,45 +65,116 @@ function createNoiseBuffer(ctx: AudioContext, seconds = 2): AudioBuffer {
   return buffer;
 }
 
-function bellPartials(type: BellType): { freq: number; gain: number; decay: number }[] {
+/**
+ * A struck-metal/wood voice. The realism comes from three things a naive
+ * harmonic sum lacks:
+ *  - INHARMONIC partials (ratios are non-integer — a real bell's tierce sits a
+ *    minor third above the prime at ~1.19, the nominal at ~2.0, etc.). Integer
+ *    multiples read as a synth "beep"; these ratios read as metal.
+ *  - a NOISE STRIKE transient at the attack (the clapper/mallet contact), which
+ *    gives the onset its body before the partials ring out.
+ *  - per-strike DETUNE so no two hits are identical (the natural warble).
+ */
+type BellVoice = {
+  base: number; // Hz of the prime partial (ratio 1.0)
+  detune: number; // max random frequency wobble per strike, as a fraction
+  osc: OscillatorType;
+  master: number;
+  partials: { ratio: number; gain: number; decay: number }[];
+  strike: { gain: number; decay: number; filterHz: number; filterQ: number };
+};
+
+function bellVoice(type: BellType): BellVoice {
   switch (type) {
     case "large":
-      return [
-        { freq: 220, gain: 0.45, decay: 3.2 },
-        { freq: 440, gain: 0.22, decay: 2.4 },
-        { freq: 660, gain: 0.12, decay: 1.8 },
-        { freq: 880, gain: 0.06, decay: 1.2 },
-      ];
+      // Deep temple bell — the classic inharmonic church-bell partial series
+      // (hum · prime · tierce · quint · nominal · upper partials), long decay.
+      return {
+        base: 110,
+        detune: 0.004,
+        osc: "sine",
+        master: 0.7,
+        partials: [
+          { ratio: 0.5, gain: 0.3, decay: 6.0 }, // hum
+          { ratio: 1.0, gain: 0.42, decay: 5.0 }, // prime
+          { ratio: 1.19, gain: 0.24, decay: 4.0 }, // tierce (minor third) — the signature
+          { ratio: 1.5, gain: 0.16, decay: 3.2 }, // quint
+          { ratio: 2.0, gain: 0.18, decay: 3.0 }, // nominal
+          { ratio: 2.55, gain: 0.09, decay: 1.8 },
+          { ratio: 3.0, gain: 0.06, decay: 1.3 },
+          { ratio: 4.2, gain: 0.04, decay: 0.9 },
+        ],
+        strike: { gain: 0.12, decay: 0.06, filterHz: 500, filterQ: 1.2 },
+      };
     case "wood":
-      return [
-        { freq: 480, gain: 0.5, decay: 0.35 },
-        { freq: 960, gain: 0.25, decay: 0.2 },
-        { freq: 1440, gain: 0.1, decay: 0.12 },
-      ];
+      // Wood block — almost all transient: a sharp filtered-noise "tock" plus a
+      // couple of fast, inharmonic resonances. Very short overall.
+      return {
+        base: 900,
+        detune: 0.01,
+        osc: "sine",
+        master: 0.85,
+        partials: [
+          { ratio: 1.0, gain: 0.3, decay: 0.09 },
+          { ratio: 1.67, gain: 0.17, decay: 0.06 },
+          { ratio: 2.68, gain: 0.09, decay: 0.04 },
+        ],
+        strike: { gain: 0.55, decay: 0.05, filterHz: 1400, filterQ: 4 },
+      };
     case "small":
     default:
-      return [
-        { freq: 528, gain: 0.4, decay: 1.8 },
-        { freq: 792, gain: 0.2, decay: 1.2 },
-        { freq: 1056, gain: 0.1, decay: 0.9 },
-      ];
+      // Bright singing-bowl-ish bell — some inharmonicity, medium decay.
+      return {
+        base: 528,
+        detune: 0.005,
+        osc: "sine",
+        master: 0.65,
+        partials: [
+          { ratio: 1.0, gain: 0.4, decay: 1.8 },
+          { ratio: 2.0, gain: 0.2, decay: 1.1 },
+          { ratio: 2.4, gain: 0.14, decay: 0.9 },
+          { ratio: 3.0, gain: 0.08, decay: 0.7 },
+          { ratio: 4.2, gain: 0.05, decay: 0.5 },
+        ],
+        strike: { gain: 0.1, decay: 0.03, filterHz: 2600, filterQ: 1.5 },
+      };
   }
 }
 
 export function playBell(ctx: AudioContext, type: BellType, when = ctx.currentTime): void {
   if (ctx.state === "suspended") void ctx.resume();
+  const v = bellVoice(type);
   const master = ctx.createGain();
-  master.gain.value = 0.7;
+  master.gain.value = v.master;
   master.connect(ctx.destination);
 
-  for (const p of bellPartials(type)) {
+  // Strike transient: a short band-passed noise burst. Without this the attack
+  // is a pure fade-in and sounds electronic; the noise gives it a physical hit.
+  const noise = ctx.createBufferSource();
+  noise.buffer = createNoiseBuffer(ctx, 0.25);
+  const nf = ctx.createBiquadFilter();
+  nf.type = "bandpass";
+  nf.frequency.value = v.strike.filterHz;
+  nf.Q.value = v.strike.filterQ;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(v.strike.gain, when);
+  ng.gain.exponentialRampToValueAtTime(0.0005, when + v.strike.decay);
+  noise.connect(nf);
+  nf.connect(ng);
+  ng.connect(master);
+  noise.start(when);
+  noise.stop(when + v.strike.decay + 0.05);
+
+  // Inharmonic partials, with a small shared per-strike detune for warble.
+  const wobble = 1 + (Math.random() - 0.5) * v.detune;
+  for (const p of v.partials) {
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
-    osc.type = type === "wood" ? "triangle" : "sine";
-    osc.frequency.value = p.freq;
+    osc.type = v.osc;
+    osc.frequency.value = v.base * p.ratio * wobble;
     g.gain.setValueAtTime(0, when);
-    g.gain.linearRampToValueAtTime(p.gain, when + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, when + p.decay);
+    g.gain.linearRampToValueAtTime(p.gain, when + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0004, when + p.decay);
     osc.connect(g);
     g.connect(master);
     osc.start(when);
