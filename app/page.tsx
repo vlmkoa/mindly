@@ -30,8 +30,8 @@ export default function HomePage() {
   return (
     <>
       <header>
-        <div className="title">________</div>
-        <div className="subtitle">Stillness. Honesty. Dissolution.</div>
+        <div className="title"> mindly </div>
+        <div className="subtitle">Stillness. Reflection. Dissolution.</div>
         {/* Only renders in scene themes; returns null otherwise. */}
         <PixelScene />
         <p className="section-lede home-lede">

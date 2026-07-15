@@ -40,8 +40,8 @@ export const DEFAULT_SOUND_CONFIG: SoundConfig = {
     enabled: false,
     mode: "mono",
     monoHz: 174,
-    leftHz: 200,
-    rightHz: 206,
+    leftHz: 432,
+    rightHz: 432,
   },
 };
 
