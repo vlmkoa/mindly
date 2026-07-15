@@ -29,7 +29,7 @@ export function Nav({ userName }: { userName?: string | null }) {
     <nav className="app-nav">
       <div className="nav-brand">
         <Link href="/" className="nav-name">
-          ________
+          mindly
         </Link>
         {userName && <span className="nav-user">{userName}</span>}
       </div>

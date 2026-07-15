@@ -192,7 +192,7 @@ export function FreeMeditation() {
   }
 
   function applyBinauralRec(delta: number) {
-    setFrequencies({ mode: "binaural", leftHz: 200, rightHz: 200 + delta });
+    setFrequencies({ mode: "binaural", leftHz: 432, rightHz: 432 + delta });
   }
 
   // ─── Session lifecycle ─────────────────────────────────────────────────────
