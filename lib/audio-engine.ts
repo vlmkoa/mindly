@@ -1,6 +1,8 @@
 /**
- * Synthesized meditation audio via the Web Audio API.
- * No audio files — ambient beds, bells, and mono/binaural beats are generated live.
+ * Meditation audio via the Web Audio API — ambient beds, bells, and mono/
+ * binaural beats are synthesized live. Bells can optionally use a recording
+ * dropped in public/sounds/ (see BELL_SAMPLE_URLS); playBell falls back to
+ * synthesis when no sample is present.
  *
  * Module-level helpers (`startAmbientNodes`, `startFrequencyTone`, `playBell`,
  * `previewAmbient`) are shared by the session engine and the short UI previews,
@@ -106,21 +108,8 @@ function bellVoice(type: BellType): BellVoice {
         ],
         strike: { gain: 0.12, decay: 0.06, filterHz: 500, filterQ: 1.2 },
       };
-    case "wood":
-      // Wood block — almost all transient: a sharp filtered-noise "tock" plus a
-      // couple of fast, inharmonic resonances. Very short overall.
-      return {
-        base: 900,
-        detune: 0.01,
-        osc: "sine",
-        master: 0.85,
-        partials: [
-          { ratio: 1.0, gain: 0.3, decay: 0.09 },
-          { ratio: 1.67, gain: 0.17, decay: 0.06 },
-          { ratio: 2.68, gain: 0.09, decay: 0.04 },
-        ],
-        strike: { gain: 0.55, decay: 0.05, filterHz: 1400, filterQ: 4 },
-      };
+    // "wood" is not a partial stack — sine partials sound metallic. It's
+    // synthesized separately by playWoodBlock (modal filtered noise). See playBell.
     case "small":
     default:
       // Bright singing-bowl-ish bell — some inharmonicity, medium decay.
@@ -141,8 +130,123 @@ function bellVoice(type: BellType): BellVoice {
   }
 }
 
+// ─── Optional sampled bells ──────────────────────────────────────────────────
+// Drop a recording in public/sounds/ to replace a synthesized bell (a wood
+// block is notoriously hard to synthesize). playBell prefers the sample and
+// falls back to synthesis if the file is missing or fails to decode.
+
+const BELL_SAMPLE_URLS: Partial<Record<BellType, string>> = {
+  wood: "/sounds/wood.mp3",
+};
+const BELL_SAMPLE_GAIN = 0.9;
+
+// AudioBuffer once decoded; `null` means "tried and unavailable → use synth".
+const sampleBuffers = new Map<BellType, AudioBuffer | null>();
+const sampleLoading = new Set<BellType>();
+
+/** Fetch + decode a bell sample into a cached buffer, at most once per type. */
+function preloadBellSample(ctx: AudioContext, type: BellType): void {
+  const url = BELL_SAMPLE_URLS[type];
+  if (!url || sampleBuffers.has(type) || sampleLoading.has(type)) return;
+  sampleLoading.add(type);
+  fetch(url)
+    .then((r) => {
+      if (!r.ok) throw new Error(`bell sample ${url} → ${r.status}`);
+      return r.arrayBuffer();
+    })
+    .then((bytes) => ctx.decodeAudioData(bytes))
+    .then((decoded) => sampleBuffers.set(type, decoded))
+    .catch(() => sampleBuffers.set(type, null)) // remember: fall back to synth
+    .finally(() => sampleLoading.delete(type));
+}
+
+/**
+ * Wood block: a struck damped-wood "tok". Summed sine partials sound metallic
+ * because each is a pure pitch that rings; real wood is a noisy impact exciting
+ * a few fast, heavily-damped resonances. So we drive resonant band-pass filters
+ * with a short noise burst (modal / subtractive synthesis) — filtered noise
+ * reads as a physical knock on wood, not a tone.
+ */
+function playWoodBlock(ctx: AudioContext, when: number): void {
+  const master = ctx.createGain();
+  master.gain.value = 0.9;
+  // Keep it bright — a wood block is crisp. Only shave the very harsh top so it
+  // doesn't fizz; do NOT dull it (that was the mistake last pass).
+  const tone = ctx.createBiquadFilter();
+  tone.type = "lowpass";
+  tone.frequency.value = 3800;
+  master.connect(tone);
+  tone.connect(ctx.destination);
+
+  // Shared noise excitation for the resonant body.
+  const noise = ctx.createBufferSource();
+  noise.buffer = createNoiseBuffer(ctx, 0.2);
+  noise.start(when);
+  noise.stop(when + 0.2);
+
+  // The hollow "tock": ONE dominant pitched resonance plus a bright overtone,
+  // both fairly high-Q so they RING briefly (the short echo of the hollow body).
+  // What keeps this wood and not a bell: only two clear partials and a short
+  // decay — a bell is many inharmonic partials ringing long. A touch of low
+  // weight underneath gives the body without dulling the crisp top.
+  const modes = [
+    { freq: 620, q: 22, gain: 0.5, decay: 0.14 }, // body tock + short ringing echo
+    { freq: 1120, q: 14, gain: 0.16, decay: 0.07 }, // hollow brightness
+    { freq: 250, q: 4, gain: 0.18, decay: 0.04 }, // faint low weight
+  ];
+  for (const m of modes) {
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = m.freq;
+    bp.Q.value = m.q;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(m.gain, when);
+    g.gain.exponentialRampToValueAtTime(0.0004, when + m.decay);
+    noise.connect(bp);
+    bp.connect(g);
+    g.connect(master);
+  }
+
+  // The sharp, bright "cl-" of the clack: a short high-passed noise burst. This
+  // crispness is the wood-block signature — bringing it back (brighter than the
+  // dull thump) is the point.
+  const click = ctx.createBufferSource();
+  click.buffer = createNoiseBuffer(ctx, 0.03);
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 1500;
+  const cg = ctx.createGain();
+  cg.gain.setValueAtTime(0.32, when);
+  cg.gain.exponentialRampToValueAtTime(0.0004, when + 0.02);
+  click.connect(hp);
+  hp.connect(cg);
+  cg.connect(master);
+  click.start(when);
+  click.stop(when + 0.03);
+}
+
 export function playBell(ctx: AudioContext, type: BellType, when = ctx.currentTime): void {
   if (ctx.state === "suspended") void ctx.resume();
+
+  // Prefer a real recording when one has loaded for this bell type.
+  const sample = sampleBuffers.get(type);
+  if (sample) {
+    const src = ctx.createBufferSource();
+    src.buffer = sample;
+    const g = ctx.createGain();
+    g.gain.value = BELL_SAMPLE_GAIN;
+    src.connect(g);
+    g.connect(ctx.destination);
+    src.start(when);
+    return;
+  }
+  // Not loaded yet (or absent) — kick off a load for next time, synth for now.
+  preloadBellSample(ctx, type);
+
+  if (type === "wood") {
+    playWoodBlock(ctx, when);
+    return;
+  }
   const v = bellVoice(type);
   const master = ctx.createGain();
   master.gain.value = v.master;
@@ -398,6 +502,8 @@ export type AudioEngine = {
 
 export function createAudioEngine(): AudioEngine {
   const ctx = new AudioContext();
+  // Warm the bell samples so the first strike can use the recording, not synth.
+  for (const t of Object.keys(BELL_SAMPLE_URLS) as BellType[]) preloadBellSample(ctx, t);
   let stops: StopHandle[] = [];
   let bellTimer: ReturnType<typeof setInterval> | null = null;
   let currentBellType: BellType = "small";
