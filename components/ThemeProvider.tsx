@@ -45,11 +45,18 @@ export function useTheme(): ThemeCtx {
   return ctx;
 }
 
+// Both of these follow the local sun/moon: they need geolocation once and a
+// minute tick to re-tint the sky.
+function isSkyTheme(id: ThemeId): boolean {
+  return id === "daycycle" || id === "immersive";
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeId>("dark");
   const [custom, setCustomState] = useState<CustomTheme>(() => getCustom());
   const [scene, setScene] = useState<SceneState>({
     hasScene: false,
+    fullBleed: false,
     celestial: "sun",
     x: 0.5,
     y: 0.3,
@@ -63,27 +70,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const stored = getStoredTheme();
     setThemeState(stored);
     setScene(applyTheme(stored, getCustom()));
-    if (stored === "daycycle") void requestCoords().then(() => refreshDayCycle());
+    if (isSkyTheme(stored)) void requestCoords().then(() => setScene(applyTheme(stored)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const refreshDayCycle = useCallback(() => {
-    setScene(applyTheme("daycycle"));
-  }, []);
-
-  // Day-cycle minute tick.
+  // Day-cycle / immersive minute tick — re-tint as the local sun/moon moves.
   useEffect(() => {
     if (tickRef.current) {
       clearInterval(tickRef.current);
       tickRef.current = null;
     }
-    if (theme === "daycycle") {
-      tickRef.current = setInterval(refreshDayCycle, 60_000);
+    if (isSkyTheme(theme)) {
+      tickRef.current = setInterval(() => setScene(applyTheme(theme)), 60_000);
     }
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
     };
-  }, [theme, refreshDayCycle]);
+  }, [theme]);
 
   // Follow the OS setting while on `system`.
   useEffect(() => {
@@ -98,7 +101,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(id);
     setStoredTheme(id);
     setScene(applyTheme(id, getCustom()));
-    if (id === "daycycle") void requestCoords().then(() => setScene(applyTheme("daycycle")));
+    if (isSkyTheme(id)) void requestCoords().then(() => setScene(applyTheme(id)));
   }, []);
 
   const setCustomTheme = useCallback(

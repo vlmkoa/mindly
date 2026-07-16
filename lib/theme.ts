@@ -17,6 +17,7 @@ export type ThemeId =
   | "light-scene"
   | "dark-scene"
   | "daycycle"
+  | "immersive"
   | "system"
   | "custom";
 
@@ -29,6 +30,7 @@ export const THEMES: { id: ThemeId; label: string; hint: string }[] = [
   { id: "light-scene", label: "Light + sun", hint: "daylit valley" },
   { id: "dark-scene", label: "Dark + moon", hint: "moonlit valley" },
   { id: "daycycle", label: "Follow the sky", hint: "your local sun & moon" },
+  { id: "immersive", label: "Immersive sky", hint: "full-screen living valley" },
   { id: "system", label: "Follow system", hint: "match your device" },
   { id: "custom", label: "Custom", hint: "your own colors" },
 ];
@@ -50,6 +52,7 @@ export const DEFAULT_CUSTOM: CustomTheme = {
 /** What the pixel scene needs to draw itself for the current theme. */
 export type SceneState = {
   hasScene: boolean;
+  fullBleed: boolean; // true → scene fills the viewport behind the whole UI
   celestial: "sun" | "moon";
   x: number; // 0 (left) .. 1 (right)
   y: number; // 0 (top of sky) .. 1 (horizon)
@@ -58,6 +61,7 @@ export type SceneState = {
 
 const NO_SCENE: SceneState = {
   hasScene: false,
+  fullBleed: false,
   celestial: "sun",
   x: 0.5,
   y: 0.3,
@@ -172,6 +176,12 @@ const DAY_BASE: Record<string, string> = {
   "--creek": "#8fbccb",
   "--creek-hi": "#d4ecf2",
   "--star": "transparent",
+  // Immersive porch (ZenScene): sunlit wood by day, and a light halo behind
+  // the (dark) text so it reads over any pixel.
+  "--wood": "#c29e70",
+  "--wood-seam": "#ab8659",
+  "--wood-dark": "#7e5f3c",
+  "--text-halo": "rgba(248, 243, 228, 0.9)",
 };
 
 const NIGHT_BASE: Record<string, string> = {
@@ -194,6 +204,11 @@ const NIGHT_BASE: Record<string, string> = {
   "--creek": "#22333f",
   "--creek-hi": "#3d5866",
   "--star": "#d8d4c0",
+  // Immersive porch (ZenScene): moonlit-dark wood, dark halo behind light text.
+  "--wood": "#221a11",
+  "--wood-seam": "#191309",
+  "--wood-dark": "#100c06",
+  "--text-halo": "rgba(0, 0, 0, 0.8)",
 };
 
 type Phase = {
@@ -294,7 +309,7 @@ export function dayCycleState(
 
   return {
     vars,
-    scene: { hasScene: true, celestial, x: pos.x, y: pos.y, stars },
+    scene: { hasScene: true, fullBleed: false, celestial, x: pos.x, y: pos.y, stars },
   };
 }
 
@@ -336,6 +351,7 @@ export function customState(c: CustomTheme): {
     vars,
     scene: {
       hasScene: true,
+      fullBleed: false,
       celestial,
       x: 0.5,
       y: 0.24,
@@ -351,7 +367,8 @@ const INLINE_VARS = [
   "--text-faint", "--text-ghost", "--text-whisper", "--accent", "--accent-bright",
   "--accent-dim", "--error", "--grain-opacity", "--sky", "--hill-far",
   "--hill-near", "--tree", "--creek", "--creek-hi", "--celestial",
-  "--celestial-glow", "--star",
+  "--celestial-glow", "--star", "--wood", "--wood-seam", "--wood-dark",
+  "--text-halo",
 ];
 
 function clearInlineVars(el: HTMLElement) {
@@ -385,9 +402,9 @@ export function applyTheme(id: ThemeId, custom?: CustomTheme): SceneState {
     case "dark-scene":
       el.setAttribute("data-theme", id);
       return id === "light-scene"
-        ? { hasScene: true, celestial: "sun", x: 0.5, y: 0.22, stars: false }
+        ? { hasScene: true, fullBleed: false, celestial: "sun", x: 0.5, y: 0.22, stars: false }
         : id === "dark-scene"
-          ? { hasScene: true, celestial: "moon", x: 0.5, y: 0.22, stars: true }
+          ? { hasScene: true, fullBleed: false, celestial: "moon", x: 0.5, y: 0.22, stars: true }
           : NO_SCENE;
 
     case "system":
@@ -400,6 +417,16 @@ export function applyTheme(id: ThemeId, custom?: CustomTheme): SceneState {
       const { vars, scene } = dayCycleState(new Date(), coords.lat, coords.lng);
       applyInlineVars(el, vars);
       return scene;
+    }
+
+    case "immersive": {
+      // Same living day-cycle palette + scene as `daycycle`, but flagged
+      // full-bleed so the scene fills the viewport behind the whole UI.
+      el.setAttribute("data-theme", "immersive");
+      const coords = getStoredCoords();
+      const { vars, scene } = dayCycleState(new Date(), coords.lat, coords.lng);
+      applyInlineVars(el, vars);
+      return { ...scene, fullBleed: true };
     }
 
     case "custom": {

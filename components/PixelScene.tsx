@@ -31,15 +31,23 @@ function columns(topFn: (x: number) => number, bottom = H): Rect[] {
   return out;
 }
 
-const farHills = columns((x) => SKY_H - 4 * gauss(x, 20, 15) - 4 * gauss(x, 76, 15) - 1);
+// Far-hill surface height at column x — the creek derives its start from this
+// so the water always meets the land exactly, whatever the hill shape.
+function farHillTop(x: number): number {
+  return SKY_H - 4 * gauss(x, 20, 15) - 4 * gauss(x, 76, 15) - 1;
+}
+
+const farHills = columns(farHillTop);
 const nearHills = columns(
   (x) => SKY_H + 3 - 5 * gauss(x, 8, 10) - 5 * gauss(x, 88, 10)
 );
 
 // Creek: a band down the middle, widening toward the viewer (perspective).
+// Starts exactly on the far-hill surface at the center column (no sky overlap)
+// and is drawn AFTER the near hills so the foreground never cuts it off.
 function creekRects(): Rect[] {
   const out: Rect[] = [];
-  const top = SKY_H - 2;
+  const top = Math.round(farHillTop(W / 2));
   for (let y = top; y < H; y++) {
     const t = (y - top) / (H - top); // 0 at horizon, 1 at foreground
     const halfW = 1 + t * 5.5;
@@ -95,9 +103,12 @@ function Rects({ list, fill }: { list: Rect[]; fill: string }) {
   );
 }
 
-export function PixelScene() {
+export function PixelScene({ fullBleed = false }: { fullBleed?: boolean }) {
   const { scene } = useTheme();
   if (!scene.hasScene) return null;
+  // The framed banner renders only in the non-immersive scene themes; the
+  // full-bleed instance renders only when the immersive theme is active.
+  if (fullBleed !== scene.fullBleed) return null;
 
   const cx = scene.x * W;
   const cy = scene.y * SKY_H;
@@ -112,7 +123,7 @@ export function PixelScene() {
   ];
 
   return (
-    <div className="pixel-scene" aria-hidden>
+    <div className={fullBleed ? "pixel-scene pixel-scene-full" : "pixel-scene"} aria-hidden>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice">
         {/* glow halo behind the celestial body */}
         <rect
@@ -130,8 +141,9 @@ export function PixelScene() {
         )}
 
         <Rects list={farHills} fill="var(--hill-far)" />
+        <Rects list={nearHills} fill="var(--hill-near)" />
+        {/* creek runs over the landforms: from the far hills to the viewer */}
         <Rects list={creekRects()} fill="var(--creek)" />
-        {/* creek sparkles */}
         <Rects
           list={[
             { x: 47, y: 18, w: 1, h: 1 },
@@ -141,7 +153,6 @@ export function PixelScene() {
           ]}
           fill="var(--creek-hi)"
         />
-        <Rects list={nearHills} fill="var(--hill-near)" />
         <Rects list={trees} fill="var(--tree)" />
       </svg>
     </div>

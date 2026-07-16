@@ -16,7 +16,7 @@ var t=localStorage.getItem('koan_theme')||'dark';
 var el=document.documentElement;
 function sys(){return matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}
 if(t==='system'){el.setAttribute('data-theme',sys());return;}
-if(t==='daycycle'){var h=new Date().getHours();el.setAttribute('data-theme',(h>=6&&h<18)?'light':'dark');return;}
+if(t==='daycycle'||t==='immersive'){var h=new Date().getHours();el.setAttribute('data-theme',(h>=6&&h<18)?'light':'dark');return;}
 if(t==='custom'){var c=JSON.parse(localStorage.getItem('koan_theme_custom')||'{}');
 var bg=c.bg||'#101418',tx=c.text||'#d8d4c4',ac=c.celestialColor||'#e8b04c';
 var n=parseInt(bg.slice(1),16),lum=((n>>16&255)*0.299+(n>>8&255)*0.587+(n&255)*0.114);

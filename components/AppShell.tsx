@@ -12,6 +12,9 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { MeditationProvider } from "@/components/MeditationProvider";
+import { MeditationBar } from "@/components/MeditationBar";
+import { ZenScene } from "@/components/ZenScene";
 import { api, User } from "@/lib/api";
 
 const PUBLIC_PATHS = ["/login", "/signup"];
@@ -50,22 +53,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider>
-      <div className="grain" />
-      <div className={`layout ${isPublic ? "layout-narrow" : layoutWidth}`}>
-        {isPublic ? (
-          children
-        ) : user ? (
-          <>
-            <Nav userName={user.name} />
-            {children}
-          </>
-        ) : (
-          // Checking session or redirecting — keep the frame, avoid a flash.
-          <div className="empty">
-            <div className="empty-text">…</div>
-          </div>
-        )}
-      </div>
+      <MeditationProvider>
+        {/* Full-viewport zen room — renders only in the immersive theme. */}
+        <ZenScene />
+        <div className="grain" />
+        <div className={`layout ${isPublic ? "layout-narrow" : layoutWidth}`}>
+          {isPublic ? (
+            children
+          ) : user ? (
+            <>
+              <Nav userName={user.name} />
+              {children}
+            </>
+          ) : (
+            // Checking session or redirecting — keep the frame, avoid a flash.
+            <div className="empty">
+              <div className="empty-text">…</div>
+            </div>
+          )}
+        </div>
+        {/* Persistent player bar — renders only while a session is active. */}
+        <MeditationBar />
+      </MeditationProvider>
     </ThemeProvider>
   );
 }

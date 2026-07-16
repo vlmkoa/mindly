@@ -496,6 +496,8 @@ export type AudioEngine = {
   ctx: AudioContext;
   start: (config: SoundConfig) => void;
   stop: () => void;
+  pause: () => void;
+  resume: () => void;
   strikeBell: () => void;
   updateFrequencies: (config: SoundConfig["frequencies"]) => void;
 };
@@ -507,7 +509,15 @@ export function createAudioEngine(): AudioEngine {
   let stops: StopHandle[] = [];
   let bellTimer: ReturnType<typeof setInterval> | null = null;
   let currentBellType: BellType = "small";
+  let currentConfig: SoundConfig | null = null; // kept so resume() can re-arm bells
   let freqHandle: FrequencyToneHandle | null = null;
+
+  function armBellInterval() {
+    if (currentConfig?.bells.enabled && currentConfig.bells.intervalMin > 0) {
+      const ms = currentConfig.bells.intervalMin * 60 * 1000;
+      bellTimer = setInterval(() => playBell(ctx, currentBellType), ms);
+    }
+  }
 
   function clearFreq() {
     freqHandle?.stop();
@@ -521,6 +531,7 @@ export function createAudioEngine(): AudioEngine {
       if (ctx.state === "suspended") void ctx.resume();
 
       currentBellType = config.bells.type;
+      currentConfig = config;
 
       if (config.music.enabled && config.music.presetId) {
         stops.push(startAmbientNodes(ctx, config.music.presetId).stop);
@@ -534,12 +545,7 @@ export function createAudioEngine(): AudioEngine {
         if (config.bells.strikeStart) {
           playBell(ctx, config.bells.type);
         }
-        if (config.bells.intervalMin > 0) {
-          const ms = config.bells.intervalMin * 60 * 1000;
-          bellTimer = setInterval(() => {
-            playBell(ctx, currentBellType);
-          }, ms);
-        }
+        armBellInterval();
       }
     },
     stop() {
@@ -550,6 +556,20 @@ export function createAudioEngine(): AudioEngine {
       stops.forEach((s) => s());
       stops = [];
       clearFreq();
+      currentConfig = null;
+    },
+    // Pause freezes audio: suspend the context (silences drones/tones cleanly)
+    // and stop scheduling bells. resume() picks the sound back up in place.
+    pause() {
+      if (bellTimer) {
+        clearInterval(bellTimer);
+        bellTimer = null;
+      }
+      void ctx.suspend();
+    },
+    resume() {
+      void ctx.resume();
+      armBellInterval();
     },
     strikeBell() {
       playBell(ctx, currentBellType);

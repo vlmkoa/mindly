@@ -1335,6 +1335,153 @@ input[type="range"] {
   shape-rendering: crispEdges;
 }
 
+/* ─── Immersive theme: scene fills the viewport behind the whole UI ────────── */
+
+.pixel-scene-full {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+  aspect-ratio: auto;
+  margin: 0;
+  border: none;
+  z-index: 0; /* behind .layout (z-index 1), above the transparent body */
+}
+
+/* Let the fixed scene show through, and float content in a readable, frosted
+   column so text stays legible over the landscape. */
+[data-theme="immersive"] body {
+  background: transparent;
+}
+
+[data-theme="immersive"] .layout {
+  /* Blend content straight onto the scene — no panel. Legibility comes from
+     a halo that follows the palette: by day the text is dark ink with a light
+     halo; by night it's light text with a dark halo. Either way it reads over
+     any pixel of the scene. --text-halo is set by the day-cycle engine. */
+  background: transparent;
+  text-shadow:
+    0 0 10px var(--text-halo, rgba(0, 0, 0, 0.5)),
+    0 1px 3px var(--text-halo, rgba(0, 0, 0, 0.5));
+}
+
+/* ─── Meditation player bar (persistent, all pages) ───────────────────────── */
+
+body.has-med-bar {
+  padding-bottom: 76px; /* room so the fixed bar never covers page content */
+}
+
+.med-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border-strong);
+}
+
+.med-bar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.med-bar-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 130px;
+}
+
+.med-bar-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.med-bar-label {
+  font-size: 14px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.med-bar-progress {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.med-bar-track {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.med-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.25s linear;
+}
+
+.med-bar-time {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.med-bar-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.med-bar-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.med-bar-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+
+.med-bar-end {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+@media (max-width: 600px) {
+  .med-bar-inner {
+    gap: 12px;
+    padding: 10px 16px;
+  }
+  .med-bar-meta {
+    min-width: 0;
+  }
+  .med-bar-label {
+    display: none;
+  }
+}
+
 /* ─── Home two-column dashboard (wide screens) ────────────────────────────── */
 
 .home-grid {

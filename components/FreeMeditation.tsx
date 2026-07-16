@@ -14,8 +14,8 @@ import {
   startFrequencyTone,
 } from "@/lib/audio-engine";
 import { AMBIENT_PRESETS, BELL_TYPES, DURATION_OPTIONS } from "@/lib/sound-library";
-import { api } from "@/lib/api";
-import { CountdownTimer } from "@/components/CountdownTimer";
+import { formatTimer } from "@/components/CountdownTimer";
+import { useMeditation } from "@/components/MeditationProvider";
 import {
   IconBell,
   IconBinaural,
@@ -133,18 +133,20 @@ function FreqNumberBox({
 }
 
 export function FreeMeditation() {
+  // The actual running session lives in the global provider so it survives
+  // navigation; this component is the builder that starts and controls it.
+  const { session, notice, start: startSession, pause, resume, end } = useMeditation();
+  const running = session !== null;
+
   const [durationSec, setDurationSec] = useState(10 * 60);
   const [editingDuration, setEditingDuration] = useState(false);
   const [draftMin, setDraftMin] = useState("10");
   const [config, setConfig] = useState<SoundConfig>(DEFAULT_SOUND_CONFIG);
   const [preset, setPreset] = useState<Preset>("silence");
   const [freqPreviewOn, setFreqPreviewOn] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [sessionKey, setSessionKey] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [doneMsg, setDoneMsg] = useState("");
+  // Preview-only engine (short bell/ambient/tone auditions); the session uses
+  // the provider's engine.
   const engineRef = useRef<AudioEngine | null>(null);
-  const completedRef = useRef(false);
   // At most one ambient preview + one frequency preview live at a time.
   const ambientPreviewRef = useRef<StopHandle | null>(null);
   const freqPreviewRef = useRef<FrequencyToneHandle | null>(null);
@@ -263,46 +265,12 @@ export function FreeMeditation() {
   }
 
   // ─── Session lifecycle ─────────────────────────────────────────────────────
-
-  const finish = useCallback(async () => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    const engine = engineRef.current;
-    if (engine && config.bells.enabled && config.bells.strikeEnd) {
-      engine.strikeBell();
-    }
-    engine?.stop();
-    setRunning(false);
-    setSaving(true);
-    try {
-      // Persist the completed session (audio itself never leaves the browser).
-      await api.meditation.save({
-        kind: "free",
-        durationSec,
-        soundConfig: JSON.stringify(config),
-      });
-      setDoneMsg("Session recorded.");
-    } catch {
-      setDoneMsg("Could not save session.");
-    } finally {
-      setSaving(false);
-    }
-  }, [config, durationSec]);
+  // Starting hands the chosen config to the provider, which owns the engine,
+  // the countdown, completion, and saving (so it all keeps going off-page).
 
   function start() {
-    completedRef.current = false;
-    setDoneMsg("");
     stopPreviews();
-    const engine = ensureEngine();
-    engine.start(config);
-    setSessionKey((k) => k + 1);
-    setRunning(true);
-  }
-
-  function stopEarly() {
-    engineRef.current?.stop();
-    setRunning(false);
-    completedRef.current = true;
+    startSession(config, durationSec);
   }
 
   const delta = Math.abs(config.frequencies.rightHz - config.frequencies.leftHz);
@@ -376,12 +344,9 @@ export function FreeMeditation() {
         <span className="hint">5-min steps — click the time to type it</span>
       </div>
 
-      <CountdownTimer
-        key={sessionKey}
-        seconds={durationSec}
-        running={running}
-        onComplete={finish}
-      />
+      <div className="countdown" aria-live="polite">
+        {formatTimer(session ? session.remainingSec : durationSec)}
+      </div>
 
       {!running && (
         <>
@@ -720,17 +685,22 @@ export function FreeMeditation() {
       )}
 
       <div className="action-row">
-        {!running ? (
+        {session ? (
+          <>
+            <button type="button" onClick={session.paused ? resume : pause}>
+              {session.paused ? "Resume" : "Pause"}
+            </button>
+            <button type="button" onClick={end}>
+              End
+            </button>
+            <span className="hint">also controllable from the bar below</span>
+          </>
+        ) : (
           <button type="button" onClick={start}>
             Begin
           </button>
-        ) : (
-          <button type="button" onClick={stopEarly}>
-            End early
-          </button>
         )}
-        {saving && <span className="hint">saving…</span>}
-        {doneMsg && <span className="hint">{doneMsg}</span>}
+        {notice && <span className="hint">{notice}</span>}
       </div>
     </section>
   );
