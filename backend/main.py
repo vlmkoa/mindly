@@ -12,16 +12,34 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 
 import config
 from database import Base, engine
 from routers import auth, dashboard, journal, koan, meditation, planner, sobriety
 
 
+def _migrate(columns: dict[str, str]) -> None:
+    """Poor-man's migration: create_all never ALTERs existing tables, so new
+    columns on existing installs are added here. Inspector check (not
+    IF NOT EXISTS) keeps it dialect-agnostic; the try/except guards the
+    multi-worker race. Replace with Alembic if the schema keeps evolving."""
+    insp = inspect(engine)
+    for table_col, ddl in columns.items():
+        table, col = table_col.split(".")
+        if col not in {c["name"] for c in insp.get_columns(table)}:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {ddl}"))
+            except Exception:
+                pass  # another worker added it first
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create any missing tables at boot (idempotent).
     Base.metadata.create_all(bind=engine)
+    _migrate({"journal_entries.blocks": "blocks TEXT"})
     yield
 
 

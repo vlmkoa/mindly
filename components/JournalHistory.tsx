@@ -47,7 +47,21 @@ export function JournalHistory({ entries }: { entries: JournalEntryDto[] }) {
                   </button>
                   {open && (
                     <div className="history-body">
-                      {e.mode === "free" ? (
+                      {e.blocks != null ? (
+                        // Blocks format: one read block per saved block; the
+                        // heading is omitted when the block was unlabeled.
+                        e.blocks.length === 0 ? (
+                          <p className="msg-text">—</p>
+                        ) : (
+                          e.blocks.map((b, i) => (
+                            <div key={i} className="prompt-read">
+                              {b.label && <div className="msg-label">{b.label}</div>}
+                              <p>{b.text || "—"}</p>
+                            </div>
+                          ))
+                        )
+                      ) : e.mode === "free" ? (
+                        // Legacy entries (pre-blocks) render exactly as before.
                         <p className="msg-text">{e.freeText || "—"}</p>
                       ) : (
                         <>

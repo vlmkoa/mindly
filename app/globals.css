@@ -959,6 +959,32 @@ input[type="range"] {
   margin-bottom: 16px;
 }
 
+/* One journal block: optional heading row + textarea. */
+.block-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.block-label-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-faint);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 4px 0;
+  outline: none;
+}
+
+.block-label-input:focus {
+  border-bottom-color: var(--accent-dim);
+}
+
 .history-month {
   margin-bottom: 28px;
 }

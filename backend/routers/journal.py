@@ -1,5 +1,7 @@
 """Journal: today's entry (upsert) + full history."""
 
+import json
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -39,5 +41,8 @@ def upsert_entry(body: JournalUpsertIn, db: Session = Depends(get_db), user: Use
     entry.successes = body.successes
     entry.failures = body.failures
     entry.intentions = body.intentions
+    entry.blocks = (
+        json.dumps([b.model_dump() for b in body.blocks]) if body.blocks is not None else None
+    )
     db.commit()
     return entry

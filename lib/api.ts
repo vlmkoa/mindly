@@ -67,14 +67,19 @@ export type AddictionDto = {
   relapses: Relapse[];
 };
 
+export type JournalBlock = { label: string; text: string };
+
 export type JournalEntryDto = {
   id: string;
   date: string;
   mode: "free" | "prompted";
+  // Legacy fixed fields — present on entries saved before the blocks format.
   freeText: string | null;
   successes: string | null;
   failures: string | null;
   intentions: string | null;
+  // Current format: ordered blocks (optional heading + text). Null on legacy rows.
+  blocks: JournalBlock[] | null;
 };
 
 export type Dashboard = {
@@ -141,13 +146,7 @@ export const api = {
 
   journal: {
     list: () => request<JournalEntryDto[]>("/api/journal/entries"),
-    upsert: (body: {
-      mode: "free" | "prompted";
-      freeText?: string | null;
-      successes?: string | null;
-      failures?: string | null;
-      intentions?: string | null;
-    }) =>
+    upsert: (body: { mode: "free" | "prompted"; blocks: JournalBlock[] }) =>
       request<JournalEntryDto>("/api/journal/entries", {
         method: "PUT",
         body: JSON.stringify({ ...body, date: localToday() }),

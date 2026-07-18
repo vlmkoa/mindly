@@ -100,10 +100,15 @@ class JournalEntry(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     date: Mapped[str] = mapped_column(String(10), index=True)  # "YYYY-MM-DD"
     mode: Mapped[str] = mapped_column(String(16))  # "free" | "prompted"
+    # Legacy fixed fields — kept so pre-blocks entries still render in history.
     free_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     successes: Mapped[str | None] = mapped_column(Text, nullable=True)
     failures: Mapped[str | None] = mapped_column(Text, nullable=True)
     intentions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Current format: JSON '[{"label": str, "text": str}, ...]' (same
+    # JSON-in-Text pattern as MeditationSession.sound_config). New saves write
+    # this and null the legacy fields.
+    blocks: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 

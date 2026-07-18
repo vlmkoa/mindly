@@ -4,9 +4,10 @@ Field names are camelCase (via alias generator) so the React frontend keeps
 its existing prop shapes — the components were written against camelCase.
 """
 
+import json
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from pydantic.alias_generators import to_camel
 
 
@@ -76,9 +77,19 @@ class AddictionOut(CamelModel):
 
 # ─── Journal ─────────────────────────────────────────────────────────────────
 
+class JournalBlock(CamelModel):
+    """One editor block: an optional heading + its text."""
+
+    label: str = Field(default="", max_length=200)  # may be empty (unlabeled block)
+    text: str = Field(default="", max_length=10_000)
+
+
 class JournalUpsertIn(CamelModel):
     date: str  # local "today" decided by the browser
     mode: str  # "free" | "prompted"
+    blocks: list[JournalBlock] | None = Field(default=None, max_length=20)
+    # Legacy fixed fields — new clients omit them, so the whole-entry
+    # overwrite in the router nulls them on new-format saves.
     free_text: str | None = None
     successes: str | None = None
     failures: str | None = None
@@ -93,6 +104,18 @@ class JournalEntryOut(CamelModel):
     successes: str | None
     failures: str | None
     intentions: str | None
+    blocks: list[JournalBlock] | None = None
+
+    @field_validator("blocks", mode="before")
+    @classmethod
+    def _parse_blocks(cls, v):
+        """ORM stores blocks as a JSON string; emit the parsed list."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except ValueError:
+                return None  # corrupt row → history falls back to legacy fields
+        return v
 
 
 # ─── Meditation ──────────────────────────────────────────────────────────────
