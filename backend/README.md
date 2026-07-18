@@ -1,4 +1,4 @@
-# FastAPI backend for the ________ wellness app.
+# FastAPI backend for the mindly wellness app.
 #
 # Layout:
 #   main.py         - app factory, CORS, router registration, table creation

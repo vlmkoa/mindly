@@ -66,11 +66,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Apply the stored theme on mount (the inline script set colors already;
   // this recomputes the scene state and starts any live updates).
+  // No requestCoords here: sky themes are the default now, and a first-time
+  // visitor must not get a geolocation popup — cached or fallback coords are
+  // used silently. Location is only requested on an explicit pick (setTheme).
   useEffect(() => {
     const stored = getStoredTheme();
     setThemeState(stored);
     setScene(applyTheme(stored, getCustom()));
-    if (isSkyTheme(stored)) void requestCoords().then(() => setScene(applyTheme(stored)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

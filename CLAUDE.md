@@ -31,7 +31,7 @@ If the API container logs `CERTIFICATE_VERIFY_FAILED` on outbound HTTPS, TLS-int
 
 ## Architecture
 
-**koan-ai** is a wellness app (placeholder name `________`) with meditation, sobriety tracking, journal, planner, and a philosophical "mirror" chat. The frontend is Next.js 16 (App Router, Webpack — Turbopack disabled after dev-cache corruption) serving pure client components; all server logic lives in a **Python FastAPI backend** with **Postgres**, both in Docker (`docker-compose.yml`). Next rewrites proxy `/api/*` to the backend, so the browser sees one origin. Auth is bcrypt + an HttpOnly session cookie (`backend/security.py`). The koan chat lives at `/koan`. Full reference: `ARCHITECTURE.md`.
+**koan-ai** is a wellness app named **mindly** with meditation, sobriety tracking, journal, planner, and a philosophical "mirror" chat. The frontend is Next.js 16 (App Router, Webpack — Turbopack disabled after dev-cache corruption) serving pure client components; all server logic lives in a **Python FastAPI backend** with **Postgres**, both in Docker (`docker-compose.yml`). Next rewrites proxy `/api/*` to the backend, so the browser sees one origin. Auth is bcrypt + an HttpOnly session cookie (`backend/security.py`). The koan chat lives at `/koan`. Full reference: `ARCHITECTURE.md`.
 
 Files that matter most for the koan voice:
 

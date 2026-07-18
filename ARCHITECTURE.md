@@ -1,8 +1,8 @@
-# Architecture — ________ (koan-ai)
+# Architecture — mindly (koan-ai)
 
 In-depth reference for the wellness app: stack, script graph, file-by-file responsibilities, call chains, and how the routes map onto the OSI model. Ends with how to run everything.
 
-App name is still a placeholder (`________`). The philosophical chat lives at `/koan`.
+The app is named **mindly** (repo name `koan-ai`). The philosophical chat lives at `/koan`.
 
 > **Rewritten 2026-07:** the backend moved from Next.js Server Actions + Prisma/SQLite
 > to a **Python FastAPI** service with **Postgres**, both running in **Docker**.

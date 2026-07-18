@@ -30,7 +30,7 @@ export default function LoginPage() {
   return (
     <>
       <header>
-        <div className="title">________</div>
+        <div className="title">mindly</div>
         <div className="subtitle">return</div>
       </header>
 

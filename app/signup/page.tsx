@@ -31,7 +31,7 @@ export default function SignupPage() {
   return (
     <>
       <header>
-        <div className="title">________</div>
+        <div className="title">mindly</div>
         <div className="subtitle">begin</div>
       </header>
 

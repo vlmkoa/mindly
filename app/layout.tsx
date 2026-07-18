@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 // It's a rough pass (base light/dark + a few inline vars); ThemeProvider
 // refines the day-cycle/custom themes precisely once React mounts.
 const THEME_BOOT = `(function(){try{
-var t=localStorage.getItem('koan_theme')||'dark';
+var t=localStorage.getItem('koan_theme')||'daycycle';
 var el=document.documentElement;
 function sys(){return matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}
 if(t==='system'){el.setAttribute('data-theme',sys());return;}

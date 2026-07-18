@@ -30,7 +30,8 @@ export const THEMES: { id: ThemeId; label: string; hint: string }[] = [
   { id: "light-scene", label: "Light + sun", hint: "daylit valley" },
   { id: "dark-scene", label: "Dark + moon", hint: "moonlit valley" },
   { id: "daycycle", label: "Follow the sky", hint: "your local sun & moon" },
-  { id: "immersive", label: "Immersive sky", hint: "full-screen living valley" },
+  // `immersive` (full-screen ZenScene) is parked while its scenes get fixed:
+  // hidden from the picker, but the id/applyTheme case stay functional.
   { id: "system", label: "Follow system", hint: "match your device" },
   { id: "custom", label: "Custom", hint: "your own colors" },
 ];
@@ -441,9 +442,12 @@ export function applyTheme(id: ThemeId, custom?: CustomTheme): SceneState {
 // ─── Persistence ─────────────────────────────────────────────────────────────
 
 export function getStoredTheme(): ThemeId {
-  if (typeof localStorage === "undefined") return "dark";
-  const v = localStorage.getItem(THEME_KEY);
-  return (v as ThemeId) || "dark";
+  if (typeof localStorage === "undefined") return "daycycle";
+  const v = localStorage.getItem(THEME_KEY) as ThemeId | null;
+  // Immersive is hidden from the picker while its scenes get reworked —
+  // remap anyone who had it stored so they don't stay stuck on it.
+  if (v === "immersive") return "daycycle";
+  return v || "daycycle"; // default: Follow the sky
 }
 
 export function setStoredTheme(id: ThemeId) {

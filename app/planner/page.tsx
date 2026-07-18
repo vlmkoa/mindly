@@ -1,7 +1,7 @@
 import { MonthPlanner } from "@/components/MonthPlanner";
 
 export const metadata = {
-  title: "Planner — ________",
+  title: "Planner — mindly",
 };
 
 export default function PlannerPage() {
