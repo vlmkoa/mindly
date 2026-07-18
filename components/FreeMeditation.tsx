@@ -366,7 +366,7 @@ export function FreeMeditation() {
               onClick={() => applyPreset("ambient")}
             >
               <IconWaves />
-              Ambient bed
+              Ambient sound
             </button>
             <button
               type="button"
@@ -385,6 +385,45 @@ export function FreeMeditation() {
               Tailor your own
             </button>
           </div>
+
+          {/* Ambient preset: pick which continuous background sound plays
+              (same options as the tailor section, previews included). */}
+          {preset === "ambient" && (
+            <div className="option-list">
+              {AMBIENT_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={config.music.presetId === p.id ? "option active" : "option"}
+                  onClick={() => chooseAmbient(p.id)}
+                >
+                  <span className="option-label">
+                    <span className="option-icon">{AMBIENT_ICONS[p.id]}</span>
+                    {p.label}
+                  </span>
+                  <span className="option-desc">{p.description}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Bells preset: pick which bell strikes (tap a chip to hear it). */}
+          {preset === "bells" && (
+            <div className="duration-row">
+              {BELL_TYPES.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  className={config.bells.type === b.id ? "chip active" : "chip"}
+                  title={b.description}
+                  onClick={() => chooseBell(b.id)}
+                >
+                  {BELL_ICONS[b.id]}
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {preset === "tailor" && (
             <div className="sound-builder">
@@ -672,7 +711,7 @@ export function FreeMeditation() {
                         </label>
                         <div className="delta-display">
                           Δ {delta.toFixed(1)} Hz — {beatBandLabel(delta)}
-                          <span className="hint"> headphones recommended</span>
+                          <span className="hint"> headphones required</span>
                         </div>
                       </>
                     )}
