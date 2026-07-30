@@ -1,0 +1,60 @@
+# Nightly logical backup: pg_dump into an emptyDir, then upload to S3.
+# This is THE recovery path (transaction-consistent, restorable anywhere);
+# EBS snapshots are only the crash-consistent secondary net.
+#
+# Credentials: the EC2 instance role via IMDS — works from pods ONLY because
+# the instance's IMDSv2 hop limit is 2 (with the default 1, the aws CLI hangs
+# ~10s then dies with "Unable to locate credentials").
+#
+# REPLACE before first apply: the S3 bucket name.
+#
+# CronJobs fail silently — the weekly check is `aws s3 ls` showing yesterday's
+# file (or a healthchecks.io dead-man ping appended to the upload command).
+# Restore drill (quarterly): copy a dump into postgres-0, then
+#   createdb -U koan restore_test && pg_restore -U koan -d restore_test <dump>
+#   && psql -U koan -d restore_test -c 'select count(*) from users;'
+#   && dropdb -U koan restore_test
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pg-backup
+spec:
+  schedule: "0 8 * * *" # daily 08:00 UTC (before the 09:00 EBS snapshot)
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          initContainers:
+            - name: dump
+              image: postgres:17-alpine
+              command:
+                - sh
+                - -c
+                - pg_dump -Fc -h postgres -U koan -d koan -f "/work/mindly-$(date +%Y-%m-%d).dump"
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mindly-secrets
+                      key: POSTGRES_PASSWORD
+              volumeMounts:
+                - name: work
+                  mountPath: /work
+          containers:
+            - name: upload
+              image: amazon/aws-cli:latest
+              command:
+                - sh
+                - -c
+                - aws s3 cp /work/ "s3://mindly-backups-REPLACE-ACCOUNT-ID/pg/" --recursive # REPLACE bucket
+              volumeMounts:
+                - name: work
+                  mountPath: /work
+          volumes:
+            - name: work
+              emptyDir: {}

@@ -1,0 +1,29 @@
+# Render check: `kubectl kustomize deploy/k8s`
+# Apply:        `kubectl apply -k deploy/k8s`
+#
+# issuers.yaml is NOT listed: ClusterIssuers are cluster-scoped and this
+# kustomization forces a namespace onto everything it manages. Apply them
+# separately: `kubectl apply -f deploy/k8s/issuers.yaml`.
+#
+# REPLACE in the images block: the ECR registry host (account + region).
+# CI overrides newTag per deploy (`kustomize edit set image` or kubectl
+# set image in deploy/scripts/node-deploy.sh).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: mindly
+resources:
+  - namespace.yaml
+  - middleware.yaml
+  - postgres.yaml
+  - api.yaml
+  - web.yaml
+  - ingress.yaml
+  - cronjob-backup.yaml
+  - cronjob-cleanup.yaml
+images:
+  - name: mindly-api
+    newName: 000000000000.dkr.ecr.us-east-1.amazonaws.com/mindly-api # REPLACE registry
+    newTag: v1
+  - name: mindly-web
+    newName: 000000000000.dkr.ecr.us-east-1.amazonaws.com/mindly-web # REPLACE registry
+    newTag: v1

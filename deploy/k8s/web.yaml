@@ -1,0 +1,62 @@
+# Next.js frontend (standalone server.js). All routing to the API happens at
+# the ingress (/api -> api service) — the dev-mode rewrite proxy inside Next
+# is dead code in production, frozen into the image at build time.
+# Any frontend change ships as a new image; there is no hot content.
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 3000
+      name: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: web
+          image: mindly-web
+          ports:
+            - containerPort: 3000
+          securityContext:
+            allowPrivilegeEscalation: false
+          # If probes fail right after a new image: the two classic causes are
+          # a missing HOSTNAME=0.0.0.0 (server bound localhost) or a broken
+          # standalone copy step in Dockerfile.web.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 50m
+            limits:
+              memory: 384Mi

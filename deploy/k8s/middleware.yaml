@@ -1,0 +1,16 @@
+# http -> https redirect, referenced by the Ingress annotation as
+# `mindly-redirect-https@kubernetescrd`. Deliberately per-Ingress rather than
+# a global entrypoint redirect, so cert-manager's HTTP-01 solver is never
+# redirected away from port 80.
+#
+# NEVER attach a `compress` middleware to the /api router: it would buffer
+# the koan chat stream into one blob. (Same warning applies to any CDN added
+# later — exclude /api/chat.)
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true

@@ -1,0 +1,83 @@
+# Postgres as a StatefulSet: stable pod identity (postgres-0) bonded to a
+# persistent volume. Single replica by design at this scale — each restart is
+# a ~10s outage, and the durability story is the nightly pg_dump CronJob + EBS
+# snapshots, not replication.
+#
+# Ops notes:
+# - Minor upgrades (17.x -> 17.y): bump the image tag. MAJOR upgrades
+#   (17 -> 18): NEVER a tag bump — pg_dump, new cluster, restore.
+# - local-path PVC size is NOT enforced (it's a hostPath dir on the node);
+#   watch `df -h` on the node.
+# - After first apply, patch the bound PV to Retain:
+#   kubectl patch pv <pv-name> -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  clusterIP: None # headless: DNS name `postgres` resolves straight to the pod
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      name: pg
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: koan
+            - name: POSTGRES_DB
+              value: koan
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mindly-secrets
+                  key: POSTGRES_PASSWORD
+            # Subdirectory of the mount — initdb refuses to run in a mount
+            # root that contains lost+found or pre-existing dirs.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "koan", "-d", "koan"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 50m
+            limits:
+              # If `kubectl describe pod postgres-0` ever shows OOMKilled,
+              # raise this before debugging anything else.
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 10Gi

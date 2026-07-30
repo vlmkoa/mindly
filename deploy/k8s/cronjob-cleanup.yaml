@@ -1,0 +1,40 @@
+# Daily housekeeping: expired auth sessions and stale rate-limit windows
+# accumulate forever without this (harmless for months, unbounded for years).
+# Replaces backend/ratelimit.py's probabilistic in-request pruning as the
+# real mechanism (that stays as belt-and-braces).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-cleanup
+spec:
+  schedule: "30 8 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: cleanup
+              image: postgres:17-alpine
+              command:
+                - psql
+                - -h
+                - postgres
+                - -U
+                - koan
+                - -d
+                - koan
+                - -c
+                - >-
+                  DELETE FROM auth_sessions WHERE expires_at < now();
+                  DELETE FROM rate_counters WHERE window_start < now() - interval '2 days';
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mindly-secrets
+                      key: POSTGRES_PASSWORD

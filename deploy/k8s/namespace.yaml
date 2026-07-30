@@ -1,0 +1,7 @@
+# All mindly workloads live here. CAUTION: deleting this namespace deletes
+# everything in it, including the postgres PVC — the PV Retain patch
+# (see deploy/README.md, Phase 4) is the only thing protecting the data dir.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mindly

@@ -1,0 +1,47 @@
+# The single front door. Traefik terminates TLS with the cert-manager-issued
+# secret and splits paths: /api to FastAPI, everything else to Next. K8s
+# longest-prefix matching makes /api win over /.
+#
+# REPLACE before first apply: both `mindly.example.com` occurrences.
+#
+# Cert flow: start on the STAGING issuer (Let's Encrypt prod locks you out for
+# 1h after 5 failures). Once `kubectl -n mindly get certificate` shows Ready,
+# flip the annotation to letsencrypt-prod, delete the mindly-tls secret, and
+# wait for Ready again.
+#
+# The https-redirect is attached per-Ingress (not globally) so cert-manager's
+# temporary HTTP-01 solver ingress stays reachable on plain port 80 — which
+# must remain open forever (renewals happen every ~60 days).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mindly
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging # flip to letsencrypt-prod after staging succeeds
+    # Format is <namespace>-<middleware-name>@kubernetescrd; a wrong value
+    # drops the router SILENTLY (only visible in Traefik's own logs).
+    traefik.ingress.kubernetes.io/router.middlewares: mindly-redirect-https@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - mindly.example.com # REPLACE with real domain
+      secretName: mindly-tls
+  rules:
+    - host: mindly.example.com # REPLACE with real domain
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 3000
