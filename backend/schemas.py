@@ -5,7 +5,8 @@ its existing prop shapes — the components were written against camelCase.
 """
 
 import json
-from datetime import datetime
+from datetime import date as date_type, datetime, timezone
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from pydantic.alias_generators import to_camel
@@ -86,8 +87,30 @@ class JournalBlock(CamelModel):
 
 class JournalUpsertIn(CamelModel):
     date: str  # local "today" decided by the browser
-    mode: str  # "free" | "prompted"
+    mode: Literal["free", "prompted"]
     blocks: list[JournalBlock] | None = Field(default=None, max_length=20)
+    @field_validator("date")
+    @classmethod
+    def _date_is_near_today(cls, v: str) -> str:
+        """Journal writes are today-only; reject arbitrary dates.
+
+        The browser decides what "today" is, so its calendar day can differ
+        from the server's UTC day by at most one day (UTC-12 … UTC+14).
+        A window of ±1 keeps every timezone working while blocking the
+        backfill/forge hole (any past or future date used to be accepted).
+        """
+        try:
+            d = date_type.fromisoformat(v)
+        except ValueError as exc:
+            raise ValueError("date must be YYYY-MM-DD") from exc
+        # fromisoformat is lenient in 3.11+ (accepts "20260730"); the stored
+        # string must round-trip to the canonical form the frontend compares.
+        if d.isoformat() != v:
+            raise ValueError("date must be YYYY-MM-DD")
+        if abs((d - datetime.now(timezone.utc).date()).days) > 1:
+            raise ValueError("journal entries can only be written for today")
+        return v
+
     # Legacy fixed fields — new clients omit them, so the whole-entry
     # overwrite in the router nulls them on new-format saves.
     free_text: str | None = None
