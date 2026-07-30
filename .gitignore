@@ -24,3 +24,6 @@ tsconfig.tsbuildinfo
 
 # Private launch notes — kept local only, not for the public repo
 LAUNCH_PLAN.md
+
+# Local scratch (screenshot drivers, captures)
+tmp/
