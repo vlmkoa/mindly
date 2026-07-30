@@ -18,8 +18,9 @@ import { ZenScene } from "@/components/ZenScene";
 import { api, User } from "@/lib/api";
 
 const PUBLIC_PATHS = ["/login", "/signup"];
-// Koan and journal read better in a narrower column; everything else is wide.
-const READING_PATHS = ["/koan", "/journal"];
+// Koan reads better in a narrower column; everything else is wide.
+// (/journal moved to wide when it became the notebook.)
+const READING_PATHS = ["/koan"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

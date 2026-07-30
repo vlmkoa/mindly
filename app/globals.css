@@ -1549,3 +1549,515 @@ body.has-med-bar {
   .cal-count-mobile { display: inline; }
   .pixel-scene { aspect-ratio: 16 / 9; }
 }
+
+/* ─── Journal notebook ────────────────────────────────────────────────────────
+   The journal as an open pixel-art book: a two-page spread drawn on a 208×150
+   pixel grid (SVG rects, crispEdges — the PixelScene idiom), with HTML content
+   overlaid on the page areas via CSS vars set from the same grid constants
+   (JournalNotebook.tsx). The palette is local and fixed — paper stays paper
+   under every app theme.
+
+   The page turn is flat 2D, like a sprite animation: a paper leaf folds to
+   the spine and lands on the far page in discrete steps() frames. No
+   perspective, no easing curves — chunky frames only. The pixel font
+   (--nb-pixel, set by next/font) is for LARGE display text only — headings,
+   stamps, big buttons; at small sizes it's unreadable, so calendar numbers,
+   stats and labels use DM Mono, and entry text keeps the app serif. */
+
+.nb-wrap {
+  --nb-leather: #6b4a32;
+  --nb-leather-dk: #3a2718;
+  --nb-paper: #f2e8d0;
+  --nb-paper-hi: #f9f1dd;
+  --nb-paper-edge: #e3d5b4;
+  --nb-rule: #d8c8a4;
+  --nb-ink: #3a3226;
+  --nb-ink-soft: #6f6350;
+  --nb-faint: #b6a684;
+  --nb-ribbon: #a8433a;
+  --nb-px: var(--nb-pixel, 'DM Mono'), 'DM Mono', monospace;
+
+  /* .page-body is a flex column and the auto margins disable stretch, so an
+     explicit width is required — without it the wrap sizes to fit-content,
+     which is 0 (the book's children are all absolutely positioned). */
+  width: 100%;
+  max-width: 1100px;
+  margin: 6px auto 0;
+}
+
+.nb-book {
+  position: relative;
+}
+
+/* Mobile-first: the spread collapses into stacked paper cards; the pixel art,
+   fold corners and turning leaf only exist where the book fits. */
+.nb-art,
+.nb-corner,
+.nb-leaf {
+  display: none;
+}
+
+.nb-page {
+  display: flex;
+  flex-direction: column;
+  background: var(--nb-paper);
+  border: 3px solid var(--nb-leather);
+  padding: 16px 14px 18px;
+  margin-bottom: 14px;
+  color: var(--nb-ink);
+}
+
+.nb-mnav {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.nb-mnav button {
+  font-family: var(--nb-px);
+}
+
+@media (min-width: 720px) {
+  .nb-book {
+    aspect-ratio: 208 / 160;
+  }
+  .nb-art {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .nb-page {
+    position: absolute;
+    left: var(--pl);
+    top: var(--pt);
+    width: var(--pw);
+    height: var(--ph);
+    background: none;
+    border: none;
+    margin: 0;
+    /* % padding resolves against the book width: left clears the margin line
+       (7 grid cells ≈ 3.4%), the rest is breathing room. */
+    padding: 2.1% 2.6% 1.9% 4.9%;
+  }
+  /* The calendar page has no margin line — give the grid the extra room. */
+  .nb-page-r {
+    padding-left: 3.2%;
+  }
+  .nb-corner,
+  .nb-leaf {
+    display: block;
+  }
+  .nb-mnav {
+    display: none;
+  }
+}
+
+/* ── The turning leaf: flat scaleX around the spine, chunky steps() frames.
+     Timings match TURN_MS in JournalNotebook.tsx. ── */
+
+.nb-leaf {
+  position: absolute;
+  left: var(--pl);
+  top: var(--pt);
+  width: var(--pw);
+  height: var(--ph);
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* -r variants sit on the right page (spine = left edge, moving edge right);
+   -l variants mirror. The light strip is the paper edge catching light. */
+.nb-leaf-fold-r,
+.nb-leaf-land-r {
+  transform-origin: left center;
+  background: linear-gradient(
+    90deg,
+    var(--nb-paper) 0 84%,
+    var(--nb-paper-hi) 84% 96%,
+    var(--nb-rule) 96%
+  );
+}
+
+.nb-leaf-fold-l,
+.nb-leaf-land-l {
+  transform-origin: right center;
+  background: linear-gradient(
+    270deg,
+    var(--nb-paper) 0 84%,
+    var(--nb-paper-hi) 84% 96%,
+    var(--nb-rule) 96%
+  );
+}
+
+.nb-leaf-fold-r,
+.nb-leaf-fold-l {
+  animation: nbLeafFold 160ms steps(4, jump-end) forwards;
+}
+
+.nb-leaf-land-r,
+.nb-leaf-land-l {
+  animation: nbLeafLand 160ms steps(4, jump-start) forwards;
+}
+
+@keyframes nbLeafFold {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@keyframes nbLeafLand {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* The book takes the leaf's weight as it lands. */
+.nb-thump {
+  animation: nbThump 160ms steps(1, end);
+}
+
+@keyframes nbThump {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nb-leaf { display: none; }
+  .nb-thump { animation: none; }
+}
+
+/* ── Page furniture ── */
+
+.nb-page-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--nb-rule);
+  font-family: var(--nb-px);
+}
+
+.nb-head-day {
+  font-size: clamp(22px, 2.4vw, 28px);
+  letter-spacing: 0.02em;
+}
+
+.nb-head-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--nb-ink-soft);
+}
+
+.nb-stamp {
+  margin-left: auto;
+  border: 2px solid var(--nb-ribbon);
+  color: var(--nb-ribbon);
+  padding: 1px 9px 2px;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nb-page-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 6px 20px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--nb-rule) transparent;
+}
+
+/* Tighter editor rhythm than the app default — a page is a fixed canvas
+   and the default state (3 prompts + save) must fit without scrolling. */
+.nb-page .duration-row { margin-bottom: 12px; }
+.nb-page .prompt-stack { gap: 14px; }
+.nb-page textarea.journal-area { min-height: 56px; }
+
+.nb-page-body::-webkit-scrollbar { width: 8px; }
+.nb-page-body::-webkit-scrollbar-thumb { background: var(--nb-rule); }
+
+/* Read-only pages. */
+.nb-read-block {
+  margin: 2px 0 18px;
+}
+
+.nb-read-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--nb-ink-soft);
+  margin-bottom: 4px;
+}
+
+.nb-read-text {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--nb-ink);
+  white-space: pre-wrap;
+}
+
+.nb-empty {
+  margin-top: 48px;
+  text-align: center;
+  font-style: italic;
+  color: var(--nb-ink-soft);
+}
+
+/* ── Today's editor, restyled as ink on paper ── */
+
+.nb-editor {
+  border: none;
+  padding: 0;
+}
+
+.nb-page button {
+  border-color: var(--nb-faint);
+  color: var(--nb-ink-soft);
+  background: transparent;
+}
+
+.nb-page button:hover:not(:disabled) {
+  border-color: var(--nb-ink);
+  color: var(--nb-ink);
+}
+
+/* Remove-block × only shows when the block is hovered — less visual noise. */
+.nb-page .ghost-btn {
+  border-color: transparent;
+  opacity: 0;
+}
+
+.nb-page .journal-block:hover .ghost-btn,
+.nb-page .ghost-btn:focus-visible {
+  opacity: 1;
+}
+
+.nb-page .hint {
+  color: var(--nb-ink-soft);
+}
+
+.nb-page .chip.active {
+  border-color: var(--nb-ink);
+  color: var(--nb-ink);
+  background: rgba(58, 50, 38, 0.07);
+}
+
+.nb-page textarea.journal-area {
+  background: transparent;
+  border: none;
+  border-bottom: 2px dashed var(--nb-rule);
+  color: var(--nb-ink);
+  font-size: 17px;
+  line-height: 1.6;
+  padding: 0 4px;
+  margin-top: 2px;
+}
+
+.nb-page textarea.journal-area:focus {
+  border-bottom-color: var(--nb-ink-soft);
+}
+
+.nb-page textarea::placeholder,
+.nb-page input::placeholder {
+  color: var(--nb-faint);
+}
+
+.nb-page .block-label-input {
+  color: var(--nb-ink-soft);
+  border-bottom-color: transparent;
+}
+
+.nb-page .block-label-input:focus {
+  border-bottom-color: var(--nb-rule);
+}
+
+.nb-page .prompt-stack {
+  margin-bottom: 12px;
+}
+
+/* Save gets the game-button treatment: hard shadow, presses down on click. */
+.nb-page .save-btn {
+  font-family: var(--nb-px);
+  font-size: 15px;
+  border: 2px solid var(--nb-ink);
+  color: var(--nb-ink);
+  padding: 6px 20px;
+  box-shadow: 3px 3px 0 var(--nb-rule);
+}
+
+.nb-page .save-btn:hover:not(:disabled) {
+  border-color: var(--nb-ink);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--nb-rule);
+}
+
+.nb-page .save-btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--nb-rule);
+}
+
+/* ── Right page: calendar index, stats, page number ── */
+
+.nb-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.nb-cal-title {
+  font-family: var(--nb-px);
+  font-size: clamp(15px, 1.7vw, 19px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nb-cal-nav {
+  width: 34px;
+  height: 32px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.nb-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.nb-cal-dow {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  color: var(--nb-ink-soft);
+  padding-bottom: 4px;
+}
+
+.nb-cal-day {
+  height: clamp(32px, 3.8vw, 46px);
+  padding: 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 14px;
+  text-align: center;
+  border: 1px solid transparent;
+  color: var(--nb-faint);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.nb-cal-day:disabled {
+  cursor: default;
+}
+
+.nb-cal-day.outside {
+  opacity: 0.3;
+}
+
+.nb-cal-day.has-page {
+  color: var(--nb-ink);
+  border-color: #cbb894;
+  background: rgba(58, 50, 38, 0.05);
+  cursor: pointer;
+}
+
+.nb-cal-day.has-page:hover {
+  border-color: var(--nb-ink);
+}
+
+.nb-cal-day.today {
+  border-color: var(--nb-ribbon);
+}
+
+.nb-cal-day.current {
+  background: var(--nb-ink);
+  border-color: var(--nb-ink);
+  color: var(--nb-paper);
+}
+
+.nb-divider {
+  border-bottom: 2px dashed var(--nb-rule);
+  margin: 18px 0 16px;
+}
+
+.nb-stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--nb-ink-soft);
+}
+
+.nb-stat b {
+  color: var(--nb-ink);
+  font-weight: 600;
+  font-size: 1.25em;
+}
+
+.nb-today-btn {
+  margin-top: 14px;
+  align-self: center;
+  font-family: var(--nb-px);
+  font-size: 14px;
+  padding: 5px 16px;
+  border-width: 2px;
+}
+
+.nb-pageno {
+  margin-top: auto;
+  padding-top: 8px;
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--nb-ink-soft);
+}
+
+/* ── Fold-corner page-turn buttons: stepped pixel triangles ── */
+
+/* .nb-page .nb-corner (not bare .nb-corner): must out-rank the
+   `.nb-page button { background: transparent }` reset. */
+.nb-page .nb-corner {
+  position: absolute;
+  bottom: 6px;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: none;
+  /* Distinct from the paper or it disappears — a folded corner in shade. */
+  background: #d9c399;
+  cursor: pointer;
+}
+
+.nb-page .nb-corner:hover:not(:disabled) {
+  background: #c9b083;
+}
+
+.nb-page .nb-corner:active:not(:disabled) {
+  background: #baa172;
+}
+
+.nb-corner-prev {
+  left: 6px;
+  clip-path: polygon(
+    0 0, 25% 0, 25% 25%, 50% 25%, 50% 50%,
+    75% 50%, 75% 75%, 100% 75%, 100% 100%, 0 100%
+  );
+}
+
+.nb-corner-next {
+  right: 6px;
+  clip-path: polygon(
+    100% 0, 100% 100%, 0 100%, 0 75%, 25% 75%,
+    25% 50%, 50% 50%, 50% 25%, 75% 25%, 75% 0
+  );
+}
+

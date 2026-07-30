@@ -8,8 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, JournalEntryDto, localToday } from "@/lib/api";
-import { TodayJournal } from "@/components/TodayJournal";
-import { JournalHistory } from "@/components/JournalHistory";
+import { JournalNotebook } from "@/components/JournalNotebook";
 
 /** Consecutive-day streak ending today (or yesterday if today unwritten). */
 function computeStreak(dates: string[]): number {
@@ -47,7 +46,6 @@ export default function JournalPage() {
 
   const today = localToday();
   const todayEntry = entries?.find((e) => e.date === today) ?? null;
-  const history = entries?.filter((e) => e.date !== today) ?? [];
   const streak = entries ? computeStreak(entries.map((e) => e.date)) : 0;
 
   return (
@@ -64,16 +62,9 @@ export default function JournalPage() {
       <div className="page-body">
         {error && <div className="form-error">{error}</div>}
         {entries && (
-          <>
-            <TodayJournal
-              // key forces a re-mount when the entry arrives so the editor
-              // initializes from the saved values.
-              key={todayEntry?.id ?? "new"}
-              initial={todayEntry}
-              onSaved={reload}
-            />
-            <JournalHistory entries={history} />
-          </>
+          // The notebook owns everything: today's editable page (last page),
+          // read-only pages for past days, page-turning, and the month index.
+          <JournalNotebook entries={entries} streak={streak} onSaved={reload} />
         )}
       </div>
     </>

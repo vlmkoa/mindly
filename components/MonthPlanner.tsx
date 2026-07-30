@@ -21,9 +21,10 @@ function dateKey(y: number, m: number, d: number): string {
 
 /**
  * Cells for a Mon–Sun grid covering the month, padded with the neighboring
- * months' days so every row has 7 cells.
+ * months' days so every row has 7 cells. (Also reused by JournalNotebook's
+ * mini calendar.)
  */
-function buildMonthCells(year: number, month: number): { key: string; day: number; outside: boolean }[] {
+export function buildMonthCells(year: number, month: number): { key: string; day: number; outside: boolean }[] {
   const first = new Date(year, month, 1);
   const lead = (first.getDay() + 6) % 7; // days shown from the previous month
   const daysInMonth = new Date(year, month + 1, 0).getDate();

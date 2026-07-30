@@ -50,9 +50,12 @@ function hydrate(mode: Mode, initial: JournalEntryDto | null): JournalBlock[] {
 export function TodayJournal({
   initial,
   onSaved,
+  embedded = false,
 }: {
   initial: JournalEntryDto | null;
   onSaved: () => void;
+  /** Inside the notebook page: skip the panel chrome and heading. */
+  embedded?: boolean;
 }) {
   const [mode, setMode] = useState<Mode>(initial?.mode ?? "prompted");
   // Separate drafts per mode so toggling doesn't destroy typed text.
@@ -97,8 +100,8 @@ export function TodayJournal({
   }
 
   return (
-    <section className="panel">
-      <h2 className="section-title">Today</h2>
+    <section className={embedded ? "nb-editor" : "panel"}>
+      {!embedded && <h2 className="section-title">Today</h2>}
       <div className="duration-row">
         <button
           type="button"
@@ -148,16 +151,14 @@ export function TodayJournal({
             />
           </div>
         ))}
-        <div>
-          <button type="button" onClick={addBlock} disabled={blocks.length >= MAX_BLOCKS}>
-            + Add block
-          </button>
-        </div>
       </div>
 
       <div className="action-row">
-        <button type="button" onClick={() => void save()} disabled={busy}>
+        <button type="button" className="save-btn" onClick={() => void save()} disabled={busy}>
           {busy ? "…" : "Save"}
+        </button>
+        <button type="button" onClick={addBlock} disabled={blocks.length >= MAX_BLOCKS}>
+          + Add block
         </button>
         {saved && <span className="hint">saved</span>}
       </div>
