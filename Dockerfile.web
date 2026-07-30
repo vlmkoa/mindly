@@ -1,0 +1,40 @@
+# Frontend image: Next.js standalone server. Build context is the repo root.
+#
+# PRODUCTION BUILDS MUST HAPPEN FROM A CLEAN CLONE (the EC2 node or CI), never
+# from this working copy: (a) images must be linux/arm64 for the t4g node — an
+# amd64 build CrashLoops with `exec format error`; (b) the backend image's cert
+# step would bake this machine's antivirus interception CA into the trust
+# bundle if the gitignored backend/certs/*.crt existed in the context.
+#
+# The build needs outbound HTTPS: next/font/google downloads Pixelify Sans at
+# build time (components/JournalNotebook.tsx).
+
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+# Dev deps included on purpose — typescript/@types are needed by `next build`.
+RUN npm ci
+
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+# Webpack, not Turbopack — pinned after dev-cache corruption (see CLAUDE.md).
+RUN npx next build --webpack
+
+FROM node:22-alpine AS run
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000
+# `output: "standalone"` emits a self-contained server, but .next/static and
+# public/ must be copied in manually — forget them and the page ships HTML
+# with dead JS/CSS (static) or a missing meditation sample (public).
+COPY --from=build --chown=node:node /app/.next/standalone ./
+COPY --from=build --chown=node:node /app/.next/static ./.next/static
+COPY --from=build --chown=node:node /app/public ./public
+USER node
+EXPOSE 3000
+CMD ["node", "server.js"]

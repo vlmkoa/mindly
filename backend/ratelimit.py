@@ -64,11 +64,15 @@ def _maybe_prune(db: Session) -> None:
 
 
 def _client_ip(request: Request) -> str:
-    """Best-effort client IP. Behind a proxy (Vercel/Render) the real client is
-    the first entry of X-Forwarded-For; fall back to the socket peer locally."""
+    """Best-effort client IP. Behind our proxy (Traefik in prod) the trusted
+    value is the LAST X-Forwarded-For entry — the one the proxy itself
+    appended. The first entry is client-supplied and spoofable: an attacker
+    sending `X-Forwarded-For: 1.2.3.4` could rotate fake IPs to bypass the
+    per-IP login/signup limits (or pin a victim's IP into the counter).
+    Fall back to the socket peer when there's no proxy (local dev)."""
     fwd = request.headers.get("x-forwarded-for")
     if fwd:
-        return fwd.split(",")[0].strip()
+        return fwd.split(",")[-1].strip()
     return request.client.host if request.client else "unknown"
 
 

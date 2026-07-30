@@ -6,6 +6,12 @@
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
 const nextConfig = {
+  // Self-contained server bundle for the production container (Dockerfile.web
+  // copies .next/standalone + .next/static + public). Note: standalone
+  // serializes this config at BUILD time, so the rewrite below is frozen into
+  // the image — in production the Traefik ingress does the /api split and the
+  // rewrite is dead code by design. It remains the dev proxy.
+  output: "standalone",
   turbopack: {
     root: __dirname,
   },

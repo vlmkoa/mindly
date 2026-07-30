@@ -27,3 +27,6 @@ LAUNCH_PLAN.md
 
 # Local scratch (screenshot drivers, captures)
 tmp/
+
+# Production secrets — only the .example template is committed
+deploy/secrets.env

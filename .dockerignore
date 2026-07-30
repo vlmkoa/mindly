@@ -1,0 +1,21 @@
+# Shared by both images (backend/Dockerfile and Dockerfile.web) — the build
+# context is the repo root for both. Keeps the context small and secrets out.
+#
+# backend/certs is deliberately NOT listed: the local Norton-cert workflow
+# needs it for dev builds (see backend/certs/README.md). The guard against
+# shipping that CA in production images is that prod builds happen only from
+# clean clones (EC2 node / CI), where the gitignored .crt never exists.
+
+node_modules
+.next
+.git
+.claude
+tmp
+evals
+__pycache__
+*.pyc
+*.pdf
+.env
+.env.*
+tsconfig.tsbuildinfo
+LAUNCH_PLAN.md

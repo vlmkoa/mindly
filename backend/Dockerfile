@@ -32,5 +32,13 @@ RUN if ls certs/*.crt >/dev/null 2>&1; then \
       cat certs/*.crt >> "$(python -c 'import certifi; print(certifi.where())')"; \
     fi
 
+# Drop root: nothing here needs it at runtime (port 8000 is unprivileged).
+# Created after the cert steps so those can still write system trust stores.
+RUN useradd --uid 10001 --create-home app
+USER app
+
 EXPOSE 8000
+# Single worker on purpose: lifespan runs create_all + a guarded ALTER, which
+# would race across workers. Scale via replicas; revisit --workers after the
+# Alembic migration phase moves schema changes out of startup.
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
