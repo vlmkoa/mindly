@@ -1,0 +1,22 @@
+# Caddy fronts the prod compose stack: automatic Let's Encrypt certs (issued
+# and renewed with zero config — port 80 must stay open forever for HTTP-01
+# and the built-in http->https redirect), and the same /api-vs-/ split the
+# milestone-2 K3s ingress uses.
+#
+# DOMAIN comes from the compose environment (set in the box's .env file).
+# Caddy appends the real client IP to X-Forwarded-For — backend/ratelimit.py
+# reads the LAST entry for exactly this reason.
+
+{$DOMAIN} {
+	handle /api/* {
+		reverse_proxy api:8000 {
+			# Never buffer: the koan chat streams plain-text chunks and must
+			# arrive word-by-word, not as one blob.
+			flush_interval -1
+		}
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

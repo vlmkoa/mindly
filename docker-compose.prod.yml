@@ -1,0 +1,78 @@
+# Production stack: one box, four services. Run on the EC2 host:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Config lives in two gitignored files next to this one on the box:
+#   .env                 -> DOMAIN=yourdomain.tld  MINDLY_BACKUP_BUCKET=...
+#   deploy/secrets.env   -> POSTGRES_PASSWORD, DATABASE_URL, ANTHROPIC_API_KEY
+#                           (DATABASE_URL host is `db` here — the compose
+#                           service name — vs `postgres` in the K8s manifests)
+#
+# Routing mirrors the milestone-2 K3s design: Caddy terminates TLS and splits
+# /api -> api, everything else -> web. Single origin; the Next rewrite proxy
+# stays dev-only. `restart: unless-stopped` + an enabled docker service means
+# the whole stack survives reboots.
+#
+# First build on a 2GB box needs the swapfile from the runbook — `next build`
+# inside Dockerfile.web peaks ~1.5GB.
+
+name: mindly-prod
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"   # must stay open forever: ACME HTTP-01 + https redirect
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env next to this compose file}
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Cert storage MUST persist — losing it on every restart re-issues
+      # certs and walks straight into Let's Encrypt rate limits.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    # No published ports — only Caddy reaches it on the compose network.
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file: deploy/secrets.env # DATABASE_URL + ANTHROPIC_API_KEY
+    environment:
+      FRONTEND_ORIGIN: https://${DOMAIN}
+      COOKIE_SECURE: "1" # Secure cookies: auth works only via https://$DOMAIN
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file: deploy/secrets.env # POSTGRES_PASSWORD (extra keys are harmless)
+    environment:
+      POSTGRES_USER: koan
+      POSTGRES_DB: koan
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U koan -d koan"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    # Deliberately NO published port — reachable only from the compose network.
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pgdata_prod:
