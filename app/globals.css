@@ -10,16 +10,18 @@
 [data-theme="dark"] {
   --bg: #0a0a08;
   --panel: #121210;
-  --border: #1e1e1a;
-  --border-strong: #2e2e28;
-  --text: #c8c4b0;
-  --text-muted: #7a7a68;
-  --text-faint: #5a5a4e;
-  --text-ghost: #3a3a30;
-  --text-whisper: #2a2a24;
+  /* Brightened 2026-07 for legibility (keep in sync with NIGHT_BASE in
+     lib/theme.ts — the day-cycle theme overrides these inline at night). */
+  --border: #34342c;
+  --border-strong: #4c4c42;
+  --text: #ddd8c4;
+  --text-muted: #a29c88;
+  --text-faint: #847e6c;
+  --text-ghost: #5f594c;
+  --text-whisper: #3d382f;
   --accent: #c8a060;
   --accent-bright: #e0c080;
-  --accent-dim: #5a5040;
+  --accent-dim: #71644e;
   --error: #a06040;
 
   --grain-opacity: 0.35;

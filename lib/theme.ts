@@ -188,16 +188,18 @@ const DAY_BASE: Record<string, string> = {
 const NIGHT_BASE: Record<string, string> = {
   "--bg": "#0a0a08",
   "--panel": "#121210",
-  "--border": "#1e1e1a",
-  "--border-strong": "#2e2e28",
-  "--text": "#c8c4b0",
-  "--text-muted": "#7a7a68",
-  "--text-faint": "#5a5a4e",
-  "--text-ghost": "#3a3a30",
-  "--text-whisper": "#2a2a24",
+  // Brightened 2026-07 for legibility (keep in sync with the
+  // :root/[data-theme="dark"] block in globals.css).
+  "--border": "#34342c",
+  "--border-strong": "#4c4c42",
+  "--text": "#ddd8c4",
+  "--text-muted": "#a29c88",
+  "--text-faint": "#847e6c",
+  "--text-ghost": "#5f594c",
+  "--text-whisper": "#3d382f",
   "--accent": "#c8a060",
   "--accent-bright": "#e0c080",
-  "--accent-dim": "#5a5040",
+  "--accent-dim": "#71644e",
   "--grain-opacity": "0.35",
   "--hill-far": "#141c26",
   "--hill-near": "#0d1319",
@@ -481,14 +483,27 @@ export function setCustom(c: CustomTheme) {
 const COORDS_KEY = "koan_coords";
 
 function getStoredCoords(): { lat: number; lng: number } {
-  if (typeof localStorage === "undefined") return { lat: 40, lng: -74 };
+  if (typeof localStorage === "undefined") return tzFallbackCoords();
   try {
     const raw = localStorage.getItem(COORDS_KEY);
     if (raw) return JSON.parse(raw);
   } catch {
     /* */
   }
-  return { lat: 40, lng: -74 }; // fallback; sunrise/sunset ~06:00/18:00-ish
+  return tzFallbackCoords();
+}
+
+/**
+ * No stored location (geolocation is only requested on an explicit theme
+ * pick, never on first visit) — approximate from the clock instead of a
+ * hardcoded city. The UTC offset pins the longitude (15° per hour), which
+ * aligns sunrise/sunset with the user's own morning and evening; the equator
+ * is the neutral latitude (≈12h days year-round). The old hardcoded New York
+ * fallback gave everyone outside US-East daytime skies at night.
+ */
+function tzFallbackCoords(): { lat: number; lng: number } {
+  const offsetHours = -new Date().getTimezoneOffset() / 60;
+  return { lat: 0, lng: offsetHours * 15 };
 }
 
 /** Asks the browser for location once and caches it for the day-cycle theme. */
