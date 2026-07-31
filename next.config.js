@@ -12,6 +12,10 @@ const nextConfig = {
   // the image — in production the Traefik ingress does the /api split and the
   // rewrite is dead code by design. It remains the dev proxy.
   output: "standalone",
+  // No next/image anywhere in the app — disable the optimizer so the
+  // /_next/image endpoint (and its sharp/libvips attack surface, see
+  // npm audit) doesn't exist at all.
+  images: { unoptimized: true },
   turbopack: {
     root: __dirname,
   },
