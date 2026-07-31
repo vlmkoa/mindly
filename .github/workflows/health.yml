@@ -1,0 +1,29 @@
+# Poor-man's uptime monitor: GitHub emails the repo owner whenever a
+# scheduled workflow run fails, so a failing probe = an alert email.
+# Free on public repos. Two caveats to know:
+#   - cron is best-effort (fires within a few minutes of schedule, not on it)
+#   - GitHub auto-disables schedules after ~60 days without repo activity —
+#     any push re-arms it
+name: health
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: # manual test button in the Actions tab
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe /api/health (3 tries before alerting)
+        run: |
+          for i in 1 2 3; do
+            if curl -sf --max-time 15 https://heymindly.com/api/health; then
+              echo " — healthy (attempt $i)"
+              exit 0
+            fi
+            echo "probe failed (attempt $i/3)"
+            sleep 20
+          done
+          echo "heymindly.com /api/health unreachable after 3 attempts"
+          exit 1

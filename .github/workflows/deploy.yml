@@ -74,6 +74,16 @@ jobs:
             --instance-id "$INSTANCE_ID" --query StandardOutputContent --output text | tail -n 8
 
       - name: Gate on live health
+        # box-deploy.sh returns when containers are *started*, not ready —
+        # uvicorn needs a few seconds to boot, so the gate must be patient.
         run: |
-          curl -sf --max-time 15 https://heymindly.com/api/health
-          echo " — live"
+          for i in $(seq 1 12); do
+            if curl -sf --max-time 10 https://heymindly.com/api/health; then
+              echo " — live (attempt $i)"
+              exit 0
+            fi
+            echo "not ready yet (attempt $i/12)"
+            sleep 5
+          done
+          echo "health gate failed after 60s"
+          exit 1

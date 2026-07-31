@@ -14,6 +14,10 @@ git reset --hard origin/main
 
 docker compose -f docker-compose.prod.yml up -d --build
 
+# The Caddyfile is a bind mount, so compose never restarts caddy for config
+# edits — graceful zero-downtime reload instead (no-op when unchanged).
+docker compose -f docker-compose.prod.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+
 # Old image layers pile up on a 20GB disk fast.
 docker image prune -f
 

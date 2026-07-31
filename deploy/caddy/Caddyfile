@@ -8,6 +8,21 @@
 # reads the LAST entry for exactly this reason.
 
 {$DOMAIN} {
+	# Browser-enforced hardening. CSP notes: 'unsafe-inline' script-src is
+	# required by the THEME_BOOT inline <script> in app/layout.tsx (hash it to
+	# tighten later); fonts.googleapis.com/gstatic.com serve the @import fonts
+	# in globals.css (next/font Pixelify is self-hosted = 'self'); img data:
+	# is the grain-noise SVG data URI.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		-Server
+	}
+
 	handle /api/* {
 		reverse_proxy api:8000 {
 			# Never buffer: the koan chat streams plain-text chunks and must
@@ -19,4 +34,10 @@
 	handle {
 		reverse_proxy web:3000
 	}
+}
+
+# People type www — bounce to the apex. Cert auto-issues once the DNS
+# record exists (created 2026-07-31 alongside this block).
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
 }
