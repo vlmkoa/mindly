@@ -9,7 +9,7 @@ export default function PlannerPage() {
     <>
       <header>
         <div className="title">Planner</div>
-        <div className="subtitle">The months ahead, one square at a time.</div>
+        <div className="subtitle">The days ahead, one day at a time.</div>
       </header>
 
       <div className="page-body">

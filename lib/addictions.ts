@@ -4,7 +4,10 @@ export type AddictionPreset = {
 };
 
 export const ADDICTION_PRESETS: AddictionPreset[] = [
-  { type: "masturbation", label: "Masturbation / porn" },
+  // Split 2026-07: previously one combined "Masturbation / porn" preset.
+  // Existing tracked rows keep their stored label; only new picks change.
+  { type: "masturbation", label: "Masturbation" },
+  { type: "porn", label: "Porn" },
   { type: "caffeine", label: "Caffeine" },
   { type: "nicotine_cigs", label: "Nicotine — cigarettes" },
   { type: "nicotine_vape", label: "Nicotine — vape" },

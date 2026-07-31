@@ -49,7 +49,7 @@ export function Planner({
         <IconSun className="card-icon" size={18} />
         Today
       </h2>
-      <p className="section-lede">What needs doing before the day dissolves.</p>
+      <p className="section-lede">What needs to be done before the day dissolves.</p>
 
       {yesterdayTasks.length > 0 && (
         <div className="reminder-strip">

@@ -8,6 +8,8 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { api, Task, localToday } from "@/lib/api";
+import { GuestGate } from "@/components/GuestGate";
+import { useAuthUser } from "@/components/AppShell";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -55,6 +57,7 @@ function humanDate(key: string): string {
 }
 
 export function MonthPlanner() {
+  const user = useAuthUser();
   const today = localToday();
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [month, setMonth] = useState(() => new Date().getMonth()); // 0-based
@@ -77,8 +80,9 @@ export function MonthPlanner() {
   }, [cells]);
 
   useEffect(() => {
+    if (!user) return; // guests see the gate, not a failed fetch
     reload();
-  }, [reload]);
+  }, [reload, user]);
 
   const byDate = useMemo(() => {
     const map = new Map<string, Task[]>();
@@ -124,6 +128,9 @@ export function MonthPlanner() {
     year: "numeric",
   });
   const selectedTasks = byDate.get(selected) ?? [];
+
+  // After all hooks: guests get the gate instead of an empty calendar.
+  if (user === null) return <GuestGate feature="The planner" />;
 
   return (
     <section className="panel">

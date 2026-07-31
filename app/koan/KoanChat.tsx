@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { api } from "@/lib/api";
+import { GuestGate } from "@/components/GuestGate";
+import { useAuthUser } from "@/components/AppShell";
 
 type Message = {
   role: "user" | "assistant";
@@ -9,6 +11,7 @@ type Message = {
 };
 
 export default function KoanChat() {
+  const user = useAuthUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -111,10 +114,22 @@ export default function KoanChat() {
     }
   }
 
+  if (user === null) {
+    return (
+      <>
+        <header>
+          <div className="title">Mirror</div>
+          <div className="subtitle">What are you certain of?</div>
+        </header>
+        <GuestGate feature="The mirror" />
+      </>
+    );
+  }
+
   return (
     <>
       <header>
-        <div className="title">Koan</div>
+        <div className="title">Mirror</div>
         <div className="subtitle">What are you certain of?</div>
       </header>
 

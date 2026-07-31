@@ -11,7 +11,7 @@ const LINKS = [
   { href: "/meditate", label: "Meditate" },
   { href: "/sobriety", label: "Sobriety" },
   { href: "/journal", label: "Journal" },
-  { href: "/koan", label: "Koan" },
+  { href: "/koan", label: "Mirror" },
 ] as const;
 
 export function Nav({ userName }: { userName?: string | null }) {
@@ -49,9 +49,16 @@ export function Nav({ userName }: { userName?: string | null }) {
         })}
       </ul>
       <ThemePicker />
-      <button type="button" className="nav-signout" onClick={handleSignOut}>
-        Sign out
-      </button>
+      {userName != null ? (
+        <button type="button" className="nav-signout" onClick={handleSignOut}>
+          Sign out
+        </button>
+      ) : (
+        // Guest browsing: the door in, instead of the door out.
+        <Link href="/login" className="nav-signout">
+          Log in
+        </Link>
+      )}
     </nav>
   );
 }

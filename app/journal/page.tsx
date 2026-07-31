@@ -9,6 +9,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, JournalEntryDto, localToday } from "@/lib/api";
 import { JournalNotebook } from "@/components/JournalNotebook";
+import { GuestGate } from "@/components/GuestGate";
+import { useAuthUser } from "@/components/AppShell";
 
 /** Consecutive-day streak ending today (or yesterday if today unwritten). */
 function computeStreak(dates: string[]): number {
@@ -30,6 +32,7 @@ function computeStreak(dates: string[]): number {
 }
 
 export default function JournalPage() {
+  const user = useAuthUser();
   const [entries, setEntries] = useState<JournalEntryDto[] | null>(null);
   const [error, setError] = useState("");
 
@@ -41,8 +44,9 @@ export default function JournalPage() {
   }, []);
 
   useEffect(() => {
+    if (!user) return; // guests see the gate, not a failed fetch
     reload();
-  }, [reload]);
+  }, [reload, user]);
 
   const today = localToday();
   const todayEntry = entries?.find((e) => e.date === today) ?? null;
@@ -60,6 +64,7 @@ export default function JournalPage() {
       </header>
 
       <div className="page-body">
+        {user === null && <GuestGate feature="The journal" />}
         {error && <div className="form-error">{error}</div>}
         {entries && (
           // The notebook owns everything: today's editable page (last page),

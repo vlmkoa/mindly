@@ -97,8 +97,15 @@ export function MeditationProvider({ children }: { children: React.ReactNode }) 
         soundConfig: JSON.stringify(config),
       });
       setNotice("Session recorded.");
-    } catch {
-      setNotice("Could not save session.");
+    } catch (e) {
+      // Guests can meditate without an account — the save just has nowhere
+      // to go. Anything else is a real failure.
+      const status = (e as { status?: number } | null)?.status;
+      setNotice(
+        status === 401
+          ? "Session complete — log in to keep a record."
+          : "Could not save session."
+      );
     }
   }, [clearTick]);
 

@@ -9,8 +9,11 @@ import { useCallback, useEffect, useState } from "react";
 import { api, AddictionDto } from "@/lib/api";
 import { AddictionCard } from "@/components/AddictionCard";
 import { AddAddictionForm } from "@/components/AddAddictionForm";
+import { GuestGate } from "@/components/GuestGate";
+import { useAuthUser } from "@/components/AppShell";
 
 export default function SobrietyPage() {
+  const user = useAuthUser();
   const [addictions, setAddictions] = useState<AddictionDto[] | null>(null);
   const [error, setError] = useState("");
 
@@ -22,8 +25,9 @@ export default function SobrietyPage() {
   }, []);
 
   useEffect(() => {
+    if (!user) return; // guests see the gate, not a failed fetch
     reload();
-  }, [reload]);
+  }, [reload, user]);
 
   return (
     <>
@@ -33,6 +37,7 @@ export default function SobrietyPage() {
       </header>
 
       <div className="page-body">
+        {user === null && <GuestGate feature="Sobriety tracking" />}
         {error && <div className="form-error">{error}</div>}
 
         {addictions && addictions.length === 0 && (

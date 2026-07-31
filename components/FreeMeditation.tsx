@@ -279,7 +279,7 @@ export function FreeMeditation() {
     <section className="panel">
       <h2 className="section-title">Free meditation</h2>
       <p className="section-lede">
-        A timer, and whatever sound you need — or none.
+        A timer, and customizable background sound — or none.
       </p>
 
       <div className="duration-row">

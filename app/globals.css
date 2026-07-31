@@ -2063,3 +2063,58 @@ body.has-med-bar {
   );
 }
 
+/* ─── Guest gate ──────────────────────────────────────────────────────────────
+   Shown in place of account-only features (planner, journal, sobriety, the
+   mirror) when browsing without a session. Meditation stays open. */
+
+.guest-gate {
+  max-width: 460px;
+  margin: 48px auto;
+  padding: 36px 28px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  text-align: center;
+}
+
+.guest-gate-title {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.guest-gate-text {
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: 22px;
+}
+
+.guest-gate-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.guest-gate-actions a {
+  padding: 8px 18px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.guest-gate-actions a:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.guest-gate-actions a.guest-gate-primary {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+
+.guest-gate-actions a.guest-gate-primary:hover {
+  color: var(--accent-bright);
+  border-color: var(--accent);
+}
+

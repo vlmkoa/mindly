@@ -11,8 +11,11 @@ import { api, Dashboard } from "@/lib/api";
 import { Planner } from "@/components/Planner";
 import { ProgressWidgets } from "@/components/ProgressWidgets";
 import { PixelScene } from "@/components/PixelScene";
+import { GuestGate } from "@/components/GuestGate";
+import { useAuthUser } from "@/components/AppShell";
 
 export default function HomePage() {
+  const user = useAuthUser();
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
 
@@ -24,8 +27,9 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (!user) return; // guests have no dashboard to fetch
     reload();
-  }, [reload]);
+  }, [reload, user]);
 
   return (
     <>
@@ -35,12 +39,18 @@ export default function HomePage() {
         {/* Only renders in scene themes; returns null otherwise. */}
         <PixelScene />
         <p className="section-lede home-lede">
-          A place to sit, track what you put down, write what the day held, plan
-          what remains — and, when certainty hardens, speak to the mirror.
+          A place to slow down, reflect, and plan for the days ahead. When
+          certainty hardens, speak to the mirror.
         </p>
       </header>
 
       <div className="page-body">
+        {user === null && (
+          <GuestGate
+            feature="Your dashboard"
+            hint="Meditation is open to everyone — try it from the tab above. The planner, journal, sobriety timers and the mirror keep personal records, so they live behind an account."
+          />
+        )}
         {error && <div className="form-error">{error}</div>}
         {data && (
           <div className="home-grid">

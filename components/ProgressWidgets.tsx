@@ -102,7 +102,7 @@ export function ProgressWidgets({
       <Link href="/koan" className="widget-card">
         <div className="msg-label label-with-icon">
           <IconRipple className="card-icon" />
-          Koan
+          Mirror
         </div>
         <div className="widget-stat">
           {koan.sessionsThisWeek} session{koan.sessionsThisWeek === 1 ? "" : "s"} this week
