@@ -27,7 +27,11 @@ services:
     environment:
       DOMAIN: ${DOMAIN:?set DOMAIN in .env next to this compose file}
     volumes:
-      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Mount the DIRECTORY, not the file: git reset --hard replaces files
+      # with new inodes, and a single-file bind mount pins the old inode —
+      # the container would read stale config forever (bit us 2026-07-31).
+      # Caddy's default config path is still /etc/caddy/Caddyfile.
+      - ./deploy/caddy:/etc/caddy:ro
       # Cert storage MUST persist — losing it on every restart re-issues
       # certs and walks straight into Let's Encrypt rate limits.
       - caddy_data:/data
