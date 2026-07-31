@@ -1,0 +1,79 @@
+# Push to main → deploy to the box, no laptop involved.
+#
+# Auth is OIDC: the run assumes arn:aws:iam::449386169548:role/mindly-gha
+# (trusted ONLY for this repo's main branch — forks/PRs cannot deploy) and
+# holds zero stored AWS keys. The role can do exactly two things: send
+# AWS-RunShellScript to the one instance, and read back the result.
+#
+# Delivery is SSM Run Command, not SSH: GitHub runner IPs are unpinnable, so
+# SSH-from-CI would mean opening port 22 to the world. SSM needs no inbound
+# ports at all — deploys keep working when the owner's home IP rotates.
+#
+# The box-side script is deploy/scripts/box-deploy.sh (fetch main, rebuild
+# images natively, compose up, prune). If the build fails there, the old
+# containers keep serving and this job fails loudly instead.
+#
+# Manual fallback (SG must allow your IP on 22):
+#   ssh -i ~/.ssh/mindly-key.pem ubuntu@3.132.54.228 sudo /opt/mindly/deploy/scripts/box-deploy.sh
+
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+# One deploy at a time; later pushes queue instead of overlapping.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  id-token: write # mint the OIDC token
+  contents: read
+
+env:
+  AWS_REGION: us-east-2
+  INSTANCE_ID: i-0f6211204b9fa834a
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assume deploy role (OIDC, no stored keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::449386169548:role/mindly-gha
+          aws-region: us-east-2
+
+      - name: Run box-deploy.sh via SSM
+        run: |
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy ${GITHUB_SHA::7}" \
+            --parameters 'commands=["/opt/mindly/deploy/scripts/box-deploy.sh"],executionTimeout=["1500"]' \
+            --query Command.CommandId --output text)
+          echo "SSM command: $CMD_ID"
+          sleep 5
+          while :; do
+            STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" --query Status --output text)
+            echo "status: $STATUS"
+            case "$STATUS" in
+              Success) break ;;
+              Failed|Cancelled|TimedOut|Undeliverable|Terminated)
+                echo "----- box stderr -----"
+                aws ssm get-command-invocation --command-id "$CMD_ID" \
+                  --instance-id "$INSTANCE_ID" --query StandardErrorContent --output text
+                exit 1 ;;
+            esac
+            sleep 15
+          done
+          echo "----- deploy output (tail) -----"
+          aws ssm get-command-invocation --command-id "$CMD_ID" \
+            --instance-id "$INSTANCE_ID" --query StandardOutputContent --output text | tail -n 8
+
+      - name: Gate on live health
+        run: |
+          curl -sf --max-time 15 https://heymindly.com/api/health
+          echo " — live"

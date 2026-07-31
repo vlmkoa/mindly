@@ -91,7 +91,11 @@ openssl s_client -connect <domain>:443 -servername <domain> </dev/null 2>/dev/nu
 
 ### Day-2
 
-Deploys: push to main, then on the box `deploy/scripts/box-deploy.sh`.
+Deploys: **push to main — that's it.** `.github/workflows/deploy.yml` assumes
+the `mindly-gha` role via OIDC and runs `box-deploy.sh` on the box through
+SSM (no inbound ports, immune to home-IP rotation). Manual fallback: SSH in
+and run `deploy/scripts/box-deploy.sh` yourself (SG port 22 must allow your
+current IP).
 Monthly: `apt upgrade` + reboot window; `df -h` (image layers + dumps).
 Quarterly: restore drill (header of `scripts/backup.sh`).
 

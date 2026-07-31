@@ -23,9 +23,10 @@ import { ZenScene } from "@/components/ZenScene";
 import { api, User } from "@/lib/api";
 
 const PUBLIC_PATHS = ["/login", "/signup"];
-// Koan reads better in a narrower column; everything else is wide.
-// (/journal moved to wide when it became the notebook.)
-const READING_PATHS = ["/koan"];
+// Pages that should use the narrower reading column instead of wide.
+// (/journal moved to wide when it became the notebook; /koan moved to wide
+// so the nav doesn't visibly shrink when switching to the Mirror tab.)
+const READING_PATHS: string[] = [];
 
 const AuthCtx = createContext<User | null | undefined>(undefined);
 
