@@ -228,10 +228,25 @@ a:hover { color: var(--accent-bright); }
   border-bottom-color: var(--accent-dim);
 }
 
+/* Worn by the sign-out <button> AND the guest "Log in" <Link> — anchors don't
+   inherit the global button rule, so the full pill look is restated here. */
 .nav-signout {
+  display: inline-block;
   height: auto;
   padding: 4px 10px;
+  border: 1px solid var(--border-strong);
+  font-family: 'DM Mono', monospace;
   font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.nav-signout:hover {
+  border-color: var(--accent-dim);
+  color: var(--accent);
 }
 
 /* ─── Theme picker ────────────────────────────────────────────────────────── */

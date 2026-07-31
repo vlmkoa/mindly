@@ -7,10 +7,10 @@ import { ThemePicker } from "@/components/ThemePicker";
 
 const LINKS = [
   { href: "/", label: "Home" },
-  { href: "/planner", label: "Planner" },
   { href: "/meditate", label: "Meditate" },
-  { href: "/sobriety", label: "Sobriety" },
   { href: "/journal", label: "Journal" },
+  { href: "/planner", label: "Planner" },
+  { href: "/sobriety", label: "Sobriety" },
   { href: "/koan", label: "Mirror" },
 ] as const;
 
