@@ -20,6 +20,7 @@ The app is named **mindly** (repo name `koan-ai`). The philosophical chat lives 
 6. [Routes & how the app works (OSI lens)](#6-routes--how-the-app-works-osi-lens)
 7. [Data model](#7-data-model)
 8. [How to run](#8-how-to-run)
+9. [Production deployment](#9-production-deployment)
 
 ---
 
@@ -37,7 +38,7 @@ The app is named **mindly** (repo name `koan-ai`). The philosophical chat lives 
 | **LLM** | Anthropic Python SDK → Claude Sonnet 4.5 | Streaming koan replies via `POST /api/chat` |
 | **Audio** | Web Audio API (browser only) | Synthesized ambient beds, bells, mono/binaural beats — no audio files |
 | **Styling** | Plain CSS (`app/globals.css`) | IM Fell English + DM Mono; dark ground; grain overlay |
-| **Containers** | Docker Compose | `db` (Postgres) + `api` (FastAPI); frontend runs on the host |
+| **Containers** | Docker Compose | Dev: `db` + `api`, frontend on the host. Prod: fully containerized (`caddy` + `web` + `api` + `db`) — see [§9](#9-production-deployment) |
 | **Eval (offline)** | Python + Anthropic | `evals/run.py` scores the koan prompt; independent of the web runtime |
 
 ### Runtime split
@@ -64,7 +65,7 @@ The app is named **mindly** (repo name `koan-ai`). The philosophical chat lives 
 └────────────────────────────────────────────────────────────────┘
 ```
 
-Key design point: the browser only ever talks to **one origin** (`localhost:3000`). `next.config.js` rewrites `/api/:path*` to the FastAPI container, so the session cookie flows naturally and no CORS is involved.
+Key design point: the browser only ever talks to **one origin** (`localhost:3000`). `next.config.js` rewrites `/api/:path*` to the FastAPI container, so the session cookie flows naturally and no CORS is involved. (In production the same single-origin split is done by Caddy at the edge instead of the Next rewrite — see [§9](#9-production-deployment).)
 
 ---
 
@@ -225,9 +226,12 @@ All pages are client components (`"use client"`) except thin wrappers; the auth 
 
 | File | Role |
 |---|---|
-| `docker-compose.yml` | `db` (postgres:17-alpine + healthcheck + named volume) and `api` (built from `backend/Dockerfile`); `api` reads `ANTHROPIC_API_KEY` from `.env.local` |
-| `backend/Dockerfile` | python:3.12-slim (3.13's strict X.509 checks reject antivirus TLS-interception certs); installs requirements; copies `backend/` + `lib/system-prompt.ts`; trusts any local root CAs dropped in `backend/certs/` (see its README) |
-| `next.config.js` | Webpack root + `/api/:path*` rewrite to `BACKEND_URL` |
+| `docker-compose.yml` | **Dev**: `db` (postgres:17-alpine + healthcheck + named volume) and `api` (built from `backend/Dockerfile`); `api` reads `ANTHROPIC_API_KEY` from `.env.local` |
+| `docker-compose.prod.yml` | **Prod**: `caddy` (TLS + routing) + `web` + `api` + `db`; see [§9](#9-production-deployment) |
+| `backend/Dockerfile` | python:3.12-slim (3.13's strict X.509 checks reject antivirus TLS-interception certs); installs requirements; copies `backend/` + `lib/system-prompt.ts`; trusts any local root CAs dropped in `backend/certs/` (see its README); runs as non-root `app` |
+| `Dockerfile.web` | Prod frontend image: multi-stage Next **standalone** build (node:22-alpine, non-root); copies `.next/standalone` + `.next/static` + `public/` |
+| `next.config.js` | Webpack root + `output: "standalone"` + `/api/:path*` rewrite to `BACKEND_URL` (the rewrite is the **dev** proxy; prod routing happens in Caddy) |
+| `deploy/` | Production assets: Caddyfile, backup/deploy scripts, K8s manifests (planned migration) — see `deploy/README.md` |
 | `.env.local` | `ANTHROPIC_API_KEY`, `BACKEND_URL` (frontend + compose `env_file`) |
 
 ### 4.6 Evals (out of band)
@@ -498,6 +502,60 @@ uvicorn main:app --reload --port 8000
 pip install anthropic
 npm run eval             # or: python -X utf8 evals/run.py
 ```
+
+---
+
+## 9. Production deployment
+
+Production runs on a single AWS EC2 instance (`t4g.small`, ARM, us-east-2)
+with the whole stack in Docker Compose behind **Caddy**, which terminates TLS
+(automatic Let's Encrypt issuance + renewal) and performs the same
+single-origin `/api` split that the Next rewrite does in dev:
+
+```
+                Internet
+                   │ https://heymindly.com  (Route53 A → Elastic IP)
+┌──────────────────▼───────────── EC2 t4g.small ────────────────┐
+│ docker compose -f docker-compose.prod.yml                     │
+│                                                               │
+│  caddy  :80/:443  — TLS (Let's Encrypt), http→https redirect  │
+│    ├── /api/* ───► api :8000   (backend/Dockerfile, non-root) │
+│    │                 │  SQLAlchemy          │ HTTPS           │
+│    │           ┌─────▼──────┐        ┌──────▼─────────┐       │
+│    │           │ db         │        │ api.anthropic  │       │
+│    │           │ postgres:17│        │ .com (Claude)  │       │
+│    │           └────────────┘        └────────────────┘       │
+│    └── /*  ────► web :3000    (Dockerfile.web, standalone)    │
+│                                                               │
+│  host cron: nightly pg_dump ──► S3 (IAM instance role)        │
+└───────────────────────────────────────────────────────────────┘
+        daily EBS snapshots (AWS DLM, retain 7)
+```
+
+Key differences from dev, and why:
+
+| Concern | Dev | Prod |
+|---|---|---|
+| `/api` routing | Next rewrite proxy (`next.config.js`) | **Caddy** path split — the rewrite is dead code in prod (standalone freezes the config at build time); streaming bypasses Node entirely |
+| Frontend | `next dev` on the host | `Dockerfile.web` image: Next **standalone** `server.js`, non-root |
+| TLS / cookies | plain http, `COOKIE_SECURE=0` | Caddy auto-TLS; `COOKIE_SECURE=1` → session cookie is `HttpOnly; Secure; SameSite=lax` |
+| Client IP | socket peer | last `X-Forwarded-For` entry appended by Caddy (`backend/ratelimit.py` — first-entry would be spoofable) |
+| Streaming | direct | `flush_interval -1` on the Caddy api route (never buffer chat chunks) |
+| Data safety | Docker volume | named volume + nightly `pg_dump` → S3 (30-day lifecycle) + daily EBS snapshots |
+| Secrets | `.env.local` | `deploy/secrets.env` on the box only (gitignored); S3 access via IAM instance role — no keys on disk |
+
+Operational notes:
+
+- **Images are built on the box** (or CI), never on a dev laptop: laptop
+  builds are the wrong CPU architecture (amd64 vs the box's arm64) and could
+  bake a local antivirus root CA into the trust store (see
+  `backend/Dockerfile`'s certs step).
+- **Deploys**: push to `main`, then run `deploy/scripts/box-deploy.sh` on the
+  box (pull → rebuild → restart; the db service and its volume are untouched).
+- **Runbook + verification battery**: `deploy/README.md`. A planned milestone
+  migrates this same box to Kubernetes (K3s) using the manifests in
+  `deploy/k8s/` — the Caddy path split maps 1:1 onto the Traefik ingress
+  there, so the app itself doesn't change.
 
 ---
 
