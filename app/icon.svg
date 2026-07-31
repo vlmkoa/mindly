@@ -17,15 +17,13 @@
         row  13     cushion
   -->
   <style>
-    .bg      { fill: #101418; } /* app dark background */
     .skin    { fill: #d9b48f; }
     .robe    { fill: #e8b04c; } /* app accent gold */
     .shade   { fill: #b8853a; } /* robe shadow (underside of legs) */
     .cushion { fill: #3a4450; }
   </style>
 
-  <!-- rounded background tile so the icon reads on light and dark tabs -->
-  <rect class="bg" x="0" y="0" width="16" height="16" rx="3"/>
+  <!-- transparent background: just the figure -->
 
   <!-- head -->
   <rect class="skin" x="6" y="2" width="4" height="3"/>
