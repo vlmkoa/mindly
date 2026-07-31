@@ -22,9 +22,10 @@ backend/certs/*.crt
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
 
-# Private launch notes — kept local only, not for the public repo
+# Private launch notes + personal study guides — kept local only
 LAUNCH_PLAN.md
 AWS_STUDY.md
+LEARNING_PATH.md
 
 # Local scratch (screenshot drivers, captures)
 tmp/
