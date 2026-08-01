@@ -19,18 +19,21 @@ from database import Base, engine
 from routers import auth, dashboard, journal, koan, meditation, planner, sobriety
 
 
-def _migrate(columns: dict[str, str]) -> None:
+def _migrate(columns: dict[str, tuple[str, str | None]]) -> None:
     """Poor-man's migration: create_all never ALTERs existing tables, so new
-    columns on existing installs are added here. Inspector check (not
+    columns on existing installs are added here (ddl, then an optional one-time
+    backfill statement in the same transaction). Inspector check (not
     IF NOT EXISTS) keeps it dialect-agnostic; the try/except guards the
     multi-worker race. Replace with Alembic if the schema keeps evolving."""
     insp = inspect(engine)
-    for table_col, ddl in columns.items():
+    for table_col, (ddl, backfill) in columns.items():
         table, col = table_col.split(".")
         if col not in {c["name"] for c in insp.get_columns(table)}:
             try:
                 with engine.begin() as conn:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {ddl}"))
+                    if backfill:
+                        conn.execute(text(backfill))
             except Exception:
                 pass  # another worker added it first
 
@@ -39,7 +42,15 @@ def _migrate(columns: dict[str, str]) -> None:
 async def lifespan(app: FastAPI):
     # Create any missing tables at boot (idempotent).
     Base.metadata.create_all(bind=engine)
-    _migrate({"journal_entries.blocks": "blocks TEXT"})
+    _migrate({
+        "journal_entries.blocks": ("blocks TEXT", None),
+        # Accounts that predate verification are grandfathered: the rule
+        # exists to stop *new* account farming, not to lock out early users.
+        "users.email_verified": (
+            "email_verified BOOLEAN NOT NULL DEFAULT FALSE",
+            "UPDATE users SET email_verified = TRUE",
+        ),
+    })
     yield
 
 

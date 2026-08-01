@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, AddictionDto } from "@/lib/api";
 import { AddictionCard } from "@/components/AddictionCard";
 import { AddAddictionForm } from "@/components/AddAddictionForm";
-import { GuestGate } from "@/components/GuestGate";
+import { GuestPeek } from "@/components/GuestGate";
 import { useAuthUser } from "@/components/AppShell";
 
 export default function SobrietyPage() {
@@ -37,7 +37,15 @@ export default function SobrietyPage() {
       </header>
 
       <div className="page-body">
-        {user === null && <GuestGate feature="Sobriety tracking" />}
+        {user === null && (
+          // Sneak peek: empty state + the add form, behind the shield.
+          <GuestPeek feature="Sobriety tracking">
+            <div className="empty-panel">
+              <div className="empty-text">Nothing tracked yet.</div>
+            </div>
+            <AddAddictionForm trackedTypes={[]} onChanged={reload} />
+          </GuestPeek>
+        )}
         {error && <div className="form-error">{error}</div>}
 
         {addictions && addictions.length === 0 && (

@@ -11,7 +11,7 @@ import { api, Dashboard } from "@/lib/api";
 import { Planner } from "@/components/Planner";
 import { ProgressWidgets } from "@/components/ProgressWidgets";
 import { PixelScene } from "@/components/PixelScene";
-import { GuestGate } from "@/components/GuestGate";
+import { GuestPeek } from "@/components/GuestGate";
 import { useAuthUser } from "@/components/AppShell";
 
 export default function HomePage() {
@@ -46,10 +46,21 @@ export default function HomePage() {
 
       <div className="page-body">
         {user === null && (
-          <GuestGate
+          // Sneak peek: a zero-state dashboard behind the shield.
+          <GuestPeek
             feature="Your dashboard"
             hint="Meditation is open to everyone — try it from the tab above. The planner, journal, sobriety timers and the mirror keep personal records, so they live behind an account."
-          />
+          >
+            <div className="home-grid">
+              <Planner todayTasks={[]} yesterdayTasks={[]} onChanged={reload} />
+              <ProgressWidgets
+                meditation={{ weekMinutes: 0, dayBars: [] }}
+                addictions={[]}
+                journal={{ todayDone: false, streak: 0 }}
+                koan={{ sessionsThisWeek: 0 }}
+              />
+            </div>
+          </GuestPeek>
         )}
         {error && <div className="form-error">{error}</div>}
         {data && (

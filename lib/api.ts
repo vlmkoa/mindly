@@ -53,7 +53,7 @@ export function localToday(): string {
 
 // ─── Types mirrored from backend/schemas.py (camelCase via alias) ────────────
 
-export type User = { id: string; email: string; name: string };
+export type User = { id: string; email: string; name: string; emailVerified: boolean };
 
 export type Task = { id: string; date: string; title: string; done: boolean };
 
@@ -104,6 +104,15 @@ export const api = {
     logout: () => request<{ ok: true }>("/api/auth/logout", { method: "POST" }),
     /** Returns the user or throws ApiError(401) — used as the auth guard. */
     me: () => request<User>("/api/auth/me"),
+    /** Always resolves ok — the server never reveals whether the email exists. */
+    forgot: (body: { email: string }) =>
+      request<{ ok: true }>("/api/auth/forgot", { method: "POST", body: JSON.stringify(body) }),
+    reset: (body: { token: string; password: string }) =>
+      request<{ ok: true }>("/api/auth/reset", { method: "POST", body: JSON.stringify(body) }),
+    verify: (body: { token: string }) =>
+      request<{ ok: true }>("/api/auth/verify", { method: "POST", body: JSON.stringify(body) }),
+    resendVerification: () =>
+      request<{ ok: true }>("/api/auth/resend-verification", { method: "POST" }),
   },
 
   dashboard: () =>

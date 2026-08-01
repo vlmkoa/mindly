@@ -56,6 +56,8 @@ services:
     environment:
       FRONTEND_ORIGIN: https://${DOMAIN}
       COOKIE_SECURE: "1" # Secure cookies: auth works only via https://$DOMAIN
+      EMAIL_MODE: ses # reset/verify links via SES (instance role, no keys)
+      AWS_REGION: us-east-2
     depends_on:
       db:
         condition: service_healthy

@@ -31,10 +31,24 @@ class LoginIn(CamelModel):
     password: str
 
 
+class ForgotIn(CamelModel):
+    email: EmailStr
+
+
+class ResetIn(CamelModel):
+    token: str = Field(min_length=20, max_length=200)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class VerifyIn(CamelModel):
+    token: str = Field(min_length=20, max_length=200)
+
+
 class UserOut(CamelModel):
     id: str
     email: str
     name: str
+    email_verified: bool = True  # default keeps old cached shapes harmless
 
 
 # ─── Planner ─────────────────────────────────────────────────────────────────

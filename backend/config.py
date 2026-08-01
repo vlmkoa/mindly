@@ -35,3 +35,15 @@ CHAT_RATE_PER_MIN = int(os.environ.get("CHAT_RATE_PER_MIN", "10"))   # burst
 CHAT_RATE_PER_DAY = int(os.environ.get("CHAT_RATE_PER_DAY", "100"))  # per-user/day
 LOGIN_RATE_PER_MIN = int(os.environ.get("LOGIN_RATE_PER_MIN", "10"))  # per IP
 SIGNUP_RATE_PER_MIN = int(os.environ.get("SIGNUP_RATE_PER_MIN", "5"))  # per IP
+FORGOT_RATE_PER_MIN = int(os.environ.get("FORGOT_RATE_PER_MIN", "3"))  # per IP
+
+# ─── Outbound email (password reset + verification) ──────────────────────────
+# "console" (default) prints links to stdout so local dev needs no AWS at all;
+# "ses" sends via AWS SES using ambient credentials (the EC2 instance role in
+# prod — no keys on disk, same model as the backup script). Links are built on
+# FRONTEND_ORIGIN, which prod sets to https://$DOMAIN.
+EMAIL_MODE = os.environ.get("EMAIL_MODE", "console")
+EMAIL_FROM = os.environ.get("EMAIL_FROM", "mindly <no-reply@heymindly.com>")
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-2")
+RESET_TOKEN_TTL_MIN = int(os.environ.get("RESET_TOKEN_TTL_MIN", "60"))
+VERIFY_TOKEN_TTL_HOURS = int(os.environ.get("VERIFY_TOKEN_TTL_HOURS", "48"))

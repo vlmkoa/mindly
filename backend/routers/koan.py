@@ -51,6 +51,13 @@ def _cached_exemplars() -> list[dict]:
 
 @router.post("/chat")
 def chat(body: ChatIn, user: User = Depends(chat_rate_limited_user)):
+    # Verified mailboxes only: rate limits cap one account's spend, this stops
+    # farming fresh accounts to multiply the quota. 403 (not 401) — the
+    # frontend distinguishes "log in" from "verify your email".
+    if not user.email_verified:
+        raise HTTPException(status_code=403,
+                            detail="Verify your email to use the mirror — check your inbox.")
+
     if not config.ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not set")
 

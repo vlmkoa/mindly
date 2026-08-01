@@ -22,7 +22,7 @@ import { MeditationBar } from "@/components/MeditationBar";
 import { ZenScene } from "@/components/ZenScene";
 import { api, User } from "@/lib/api";
 
-const PUBLIC_PATHS = ["/login", "/signup"];
+const PUBLIC_PATHS = ["/login", "/signup", "/forgot", "/reset", "/verify"];
 // Pages that should use the narrower reading column instead of wide.
 // (/journal moved to wide when it became the notebook; /koan moved to wide
 // so the nav doesn't visibly shrink when switching to the Mirror tab.)

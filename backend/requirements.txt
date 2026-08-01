@@ -7,3 +7,4 @@ psycopg[binary]
 bcrypt
 anthropic
 pydantic[email]>=2
+boto3  # SES sends in prod (EMAIL_MODE=ses); console mode never imports it

@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, JournalEntryDto, localToday } from "@/lib/api";
 import { JournalNotebook } from "@/components/JournalNotebook";
-import { GuestGate } from "@/components/GuestGate";
+import { GuestPeek } from "@/components/GuestGate";
 import { useAuthUser } from "@/components/AppShell";
 
 /** Consecutive-day streak ending today (or yesterday if today unwritten). */
@@ -64,7 +64,12 @@ export default function JournalPage() {
       </header>
 
       <div className="page-body">
-        {user === null && <GuestGate feature="The journal" />}
+        {user === null && (
+          // Sneak peek: the real (empty) notebook under an interaction shield.
+          <GuestPeek feature="The journal">
+            <JournalNotebook entries={[]} streak={0} onSaved={reload} />
+          </GuestPeek>
+        )}
         {error && <div className="form-error">{error}</div>}
         {entries && (
           // The notebook owns everything: today's editable page (last page),

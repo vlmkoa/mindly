@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { api } from "@/lib/api";
-import { GuestGate } from "@/components/GuestGate";
+import { GuestPeek } from "@/components/GuestGate";
 import { useAuthUser } from "@/components/AppShell";
 
 type Message = {
@@ -15,8 +15,18 @@ export default function KoanChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [resent, setResent] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  async function resendVerification() {
+    try {
+      await api.auth.resendVerification();
+      setResent(true);
+    } catch {
+      /* rate limited — the button stays, they can retry in a minute */
+    }
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -114,19 +124,7 @@ export default function KoanChat() {
     }
   }
 
-  if (user === null) {
-    return (
-      <>
-        <header>
-          <div className="title">Mirror</div>
-          <div className="subtitle">What are you certain of?</div>
-        </header>
-        <GuestGate feature="The mirror" />
-      </>
-    );
-  }
-
-  return (
+  const content = (
     <>
       <header>
         <div className="title">Mirror</div>
@@ -160,27 +158,54 @@ export default function KoanChat() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="input-area">
-        <div className="input-row">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder="State something you know to be true..."
-            rows={1}
-            disabled={streaming}
-          />
-          <button onClick={send} disabled={!input.trim() || streaming}>
-            {streaming ? "..." : "Ask"}
-          </button>
+      {user && !user.emailVerified ? (
+        // Logged in but unverified: the chat spends real money, so it opens
+        // only after the emailed link is clicked (403 from the API anyway).
+        <div className="input-area">
+          <div className="guest-gate">
+            <div className="guest-gate-title">Verify your email to open the mirror</div>
+            <p className="guest-gate-text">
+              {resent
+                ? `A fresh link is on its way to ${user.email}.`
+                : `We sent a link to ${user.email} when you signed up — click it and the mirror opens.`}
+            </p>
+            <div className="guest-gate-actions">
+              <button onClick={resendVerification} disabled={resent}>
+                {resent ? "Sent" : "Resend the link"}
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="hint">enter to send · shift+enter for new line</div>
-        <div className="crisis-note">
-          a philosophical toy, not support — if you&apos;re struggling, call or
-          text 988
+      ) : (
+        <div className="input-area">
+          <div className="input-row">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKey}
+              placeholder="State something you know to be true..."
+              rows={1}
+              disabled={streaming}
+            />
+            <button onClick={send} disabled={!input.trim() || streaming}>
+              {streaming ? "..." : "Ask"}
+            </button>
+          </div>
+          <div className="hint">enter to send · shift+enter for new line</div>
+          <div className="crisis-note">
+            a philosophical toy, not support — if you&apos;re struggling, call or
+            text 988
+          </div>
         </div>
-      </div>
+      )}
     </>
+  );
+
+  // Guests see the real page under an interaction shield (sneak peek).
+  return user === null ? (
+    <GuestPeek feature="The mirror">{content}</GuestPeek>
+  ) : (
+    content
   );
 }

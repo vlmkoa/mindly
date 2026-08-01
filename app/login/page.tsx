@@ -62,6 +62,8 @@ export default function LoginPage() {
         </button>
         <div className="hint">
           no account? <Link href="/signup">create one</Link>
+          {" · "}
+          <Link href="/forgot">forgot password?</Link>
         </div>
       </form>
     </>

@@ -2091,6 +2091,55 @@ body.has-med-bar {
   text-align: center;
 }
 
+/* ─── Guest sneak peek ────────────────────────────────────────────────────────
+   The real feature UI renders underneath (inert); the shield catches the
+   first interaction and raises the login panel. */
+
+.guest-peek {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.guest-peek-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.guest-peek-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.25s;
+}
+
+.guest-peek-shield.open {
+  cursor: default;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.guest-peek-panel .guest-gate {
+  margin: 0 auto;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35);
+}
+
+.guest-peek-dismiss {
+  display: block;
+  margin: 12px auto 0;
+  border: none;
+  height: auto;
+  padding: 4px 8px;
+  color: var(--text-whisper);
+}
+
 .guest-gate-title {
   font-size: 22px;
   margin-bottom: 10px;
