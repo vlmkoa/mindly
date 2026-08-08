@@ -11,19 +11,47 @@ on:
     - cron: "*/10 * * * *"
   workflow_dispatch: # manual test button in the Actions tab
 
+# Two-job shape: a transient blip (one bad network moment between GitHub's
+# runner and AWS) must not page anyone. Job 1 probing is advisory; the
+# workflow only FAILS if the confirm job — a fresh probe two minutes
+# later — also can't reach the site. 2026-08-07 taught us this: one
+# isolated 70s blip emailed a false alarm while the box was provably idle.
+# (Runner-evicted "cancelled" runs remain unavoidable GitHub noise.)
 jobs:
   probe:
     runs-on: ubuntu-latest
+    outputs:
+      down: ${{ steps.check.outputs.down }}
     steps:
-      - name: Probe /api/health (3 tries before alerting)
+      - name: Probe /api/health (3 tries)
+        id: check
         run: |
           for i in 1 2 3; do
             if curl -sf --max-time 15 https://heymindly.com/api/health; then
               echo " — healthy (attempt $i)"
+              echo "down=no" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             echo "probe failed (attempt $i/3)"
             sleep 20
           done
-          echo "heymindly.com /api/health unreachable after 3 attempts"
+          echo "down=yes" >> "$GITHUB_OUTPUT"
+
+  confirm:
+    needs: probe
+    if: needs.probe.outputs.down == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Re-probe after 2 minutes (this one alerts)
+        run: |
+          sleep 120
+          for i in 1 2 3; do
+            if curl -sf --max-time 15 https://heymindly.com/api/health; then
+              echo " — recovered; was a transient blip (attempt $i)"
+              exit 0
+            fi
+            echo "still down (attempt $i/3)"
+            sleep 20
+          done
+          echo "heymindly.com /api/health CONFIRMED DOWN across two jobs and ~4 minutes"
           exit 1
